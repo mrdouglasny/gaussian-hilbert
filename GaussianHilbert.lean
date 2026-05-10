@@ -1,0 +1,4 @@
+-- Umbrella import for the gaussian-hilbert library.
+-- See README.md for the per-file content map.
+--
+-- (Empty for now; populated as the chaos-cluster migration lands.)
