@@ -40,12 +40,12 @@ Four library files and one shared foundational axiom:
 |---|---|---|
 | `GaussianHilbert/HermitePolynomials.lean` | imported from `markov-semigroups/MarkovSemigroups/Gaussian/` | Multivariate (probabilist's) Hermite polynomials `H_α(x) = ∏ᵢ He_{αᵢ}(xᵢ)`, orthogonality `∫ H_α H_β dγ_n = δ_{αβ} ∏ᵢ αᵢ!` (proved via Fubini + 1D Wick orthogonality), and L²-density `hermiteMulti_dense` (proved via `MvPolynomial.induction_on` + Hermite three-term recurrence + `Submodule.span` change-of-basis). |
 | `GaussianHilbert/WienerChaos.lean` | imported from `markov-semigroups/MarkovSemigroups/Gaussian/` | The `k`-th Wiener chaos `wienerChaos n k` as a closed L² submodule, orthogonal projection `chaosProjection n k`, distinct-chaos orthogonality, full chaos decomposition `wienerChaos_isHilbertSum : IsHilbertSum ℝ (wienerChaos n) ...` (proved from `hermiteMulti_dense`). |
-| `GaussianHilbert/OUEigenfunctions.lean` | imported from `markov-semigroups/MarkovSemigroups/Gaussian/` | The Ornstein-Uhlenbeck generator `L = Δ - x·∇` and the eigenfunction theorem `ouGenerator_hermiteMultiEval : L H_α = -|α| H_α` (proved). Three placeholder axioms for the OU semigroup operator `ouSemigroupAct` and its action on chaos pieces (gated on the Mehler-kernel discharge plan; see `docs/`). |
+| `GaussianHilbert/OUEigenfunctions.lean` | imported from `markov-semigroups/MarkovSemigroups/Gaussian/` | The Ornstein-Uhlenbeck generator `L = Δ - x·∇`, the eigenfunction theorem `ouGenerator_hermiteMultiEval : L H_α = -|α| H_α`, and a proved spectral OU semigroup `ouSemigroupAct` acting by `e^{-kt}` on the `k`-th Wiener chaos. One placeholder axiom remains: `ouSemigroupAct_eLpNorm_hypercontractive`. |
 | `GaussianHilbert/PolynomialChaosConcentration.lean` | imported from `markov-semigroups/MarkovSemigroups/Gaussian/` | Bonami-Beckner-Nelson hypercontractive bound `‖f‖_{L^p} ≤ (p-1)^{k/2} ‖f‖_{L²}` on the `k`-th chaos, the analogous bound on `⊕_{k ≤ d} H_k`, and **Janson Theorem 5.10** polynomial-chaos concentration `ℙ(|F| > λ ‖F‖_{L²}) ≤ 2 exp(-c_d λ^{2/d})`. |
 | `GaussianHilbert/PolynomialDensity.lean` | imported from `gaussian-field/GeneralResults/PolynomialDensityGaussian.lean` | The textbook density axiom `polynomial_dense_L2_of_subGaussian` (Janson Thm 2.6) plus the proved instance `isSubGaussianMeasure_pi_gaussianReal` (transported from Mathlib's Fernique theorem). |
 
-All four library files are sorry-free as imported. Three OU-action
-placeholder axioms remain in `OUEigenfunctions.lean`; a discharge plan
+All five library files are sorry-free. One OU-action
+placeholder axiom remains in `OUEigenfunctions.lean`; a discharge plan
 (via Mehler kernel + Bakry-Émery + Gross's hypercontractivity duality)
 is committed at `docs/ou-mehler-discharge-plan.md`. Companion roadmap at
 `docs/polynomial-chaos-roadmap.md`.
@@ -106,9 +106,9 @@ import `gaussian-hilbert`.
 
 ## Status
 
-5 library files (~1,950 lines), **0 sorries, 4 axioms** (1 analytic
-foundation + 3 OU placeholders). `lake build` clean. Snapshot:
+5 library files (~2,410 lines), **0 sorries, 2 axioms** (1 analytic
+foundation + 1 OU placeholder). `lake build` clean. Snapshot:
 [`STATUS.md`](STATUS.md). Per-axiom vetting verdicts and discharge
-plans: [`docs/AXIOM_AUDIT.md`](docs/AXIOM_AUDIT.md). Forward-looking
+plans: [`AXIOM_AUDIT.md`](AXIOM_AUDIT.md). Forward-looking
 development directions motivated by Janson's textbook chapters:
 [`TODO.md`](TODO.md).

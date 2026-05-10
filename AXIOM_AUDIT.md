@@ -50,14 +50,14 @@ plan, and downstream consumers.*
 
 ## Summary
 
-**4 axioms total** (`grep ^axiom` on `GaussianHilbert/`):
+**2 axioms total** (`grep ^axiom` on `GaussianHilbert/`):
 - 1 in `GaussianHilbert/PolynomialDensity.lean` — analytic axiom feeding the algebraic discharge of `hermiteMulti_dense`
-- 3 in `GaussianHilbert/OUEigenfunctions.lean` — placeholder OU-action axioms gated on the Mehler-kernel discharge plan
+- 1 in `GaussianHilbert/OUEigenfunctions.lean` — the remaining OU hypercontractive placeholder
 
 The polynomial-chaos pipeline (proved theorems `hermiteMulti_dense`,
 `wienerChaos_isHilbertSum`, `bonami_nelson_chaos`,
 `bonami_nelson_chaosLE`, `polynomial_chaos_concentration`) transitively
-rests on these 4 + Lean built-ins (`propext`, `Classical.choice`,
+rests on these 2 + Lean built-ins (`propext`, `Classical.choice`,
 `Quot.sound`).
 
 ## Audit table
@@ -74,26 +74,35 @@ axiom), and the lemma `isSubGaussianMeasure_pi_gaussianReal` is fully
 through the `WithLp.toLp 2` measurable equivalence; depends only on
 Lean built-ins).
 
-### OU semigroup action (placeholder cluster)
+### Previously axiomatized but now proved
 
-These three axioms are infrastructure stubs: they declare an `ouSemigroupAct`
-operator and its expected behaviour on Wiener-chaos pieces, without
-specifying the operator. They are load-bearing for `polynomial_chaos_concentration`
-(Janson Thm 5.10) and the Bonami-Nelson L^p bounds.
+These two former OU placeholders were discharged on 2026-05-10 by a
+spectral construction using `wienerChaos_isHilbertSum`: `ouSemigroupAct`
+is now defined by diagonal decay on chaos coordinates, and
+`ouSemigroupAct_eq_smul_of_mem_wienerChaos` is proved from that
+definition. This is mathematically equivalent to the Mehler operator on
+`L²(γ_n)`, but the pointwise Mehler identification is still deferred.
 
-A full discharge plan exists at
-[`docs/ou-mehler-discharge-plan.md`](ou-mehler-discharge-plan.md) — five
-stages, ~3-4 weeks of focused work, no further Mathlib gaps. After
-those discharges, the polynomial-chaos pipeline rests only on
-`polynomial_dense_L2_of_subGaussian` (above) +
-`gross_lsi_implies_hypercontractive` (markov-semigroups) + the 4 1D
-Mehler-kernel BGL axioms (markov-semigroups).
+| Former axiom | File:Line | Reference | Discharge status | Notes | Consumers |
+|---|---|---|---|---|---|
+| `ouSemigroupAct` | [`GaussianHilbert/OUEigenfunctions.lean:657`](../GaussianHilbert/OUEigenfunctions.lean#L657) | BGL §2.7.4 (OU semigroup definition) | **Proved** | Defined spectrally as the continuous diagonal map `f_k ↦ e^{-kt} f_k` on the `ℓ²` sum of Wiener-chaos coordinates, transported back along `wienerChaos_isHilbertSum`. This is sufficient for all existing chaos-eigenvalue consumers. | `ouSemigroupAct_eq_smul_of_mem_wienerChaos`, `ouSemigroupAct_eLpNorm_hypercontractive`, `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` |
+| `ouSemigroupAct_eq_smul_of_mem_wienerChaos` | [`GaussianHilbert/OUEigenfunctions.lean:680`](../GaussianHilbert/OUEigenfunctions.lean#L680) | BGL §2.7.4 (OU eigenvalues on chaos: `T_t H_k = e^{-kt} H_k`); Janson §3.4; Nualart §1.4 | **Proved** | Reduced to the single-coordinate computation for the spectral diagonal operator under the chaos-coordinate equivalence. | `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` |
+
+### Remaining OU placeholder
+
+The only OU axiom left is the hypercontractive bound. It remains
+load-bearing for `polynomial_chaos_concentration` (Janson Thm 5.10) and
+the Bonami-Nelson `L^p` bounds.
+
+The full Mehler-kernel discharge plan at
+[`docs/ou-mehler-discharge-plan.md`](ou-mehler-discharge-plan.md)
+remains relevant if we later want a pointwise Markov realization of the
+OU semigroup or a native proof of hypercontractivity. For the current
+repo milestone, only the last hypercontractive step is still axiomatic.
 
 | Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
 |---|---|---|---|---|---|---|
-| `ouSemigroupAct` | [`GaussianHilbert/OUEigenfunctions.lean:490`](../GaussianHilbert/OUEigenfunctions.lean#L490) | BGL §2.7.4 (OU semigroup definition) | **Placeholder** | LP | Defines the OU semigroup as a CLM `Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n)` without specifying the operator. Discharge: define explicitly as the Mehler integral `(M_t f)(x) = ∫ f(e^{-t}x + √(1-e^{-2t})y) dγ_n(y)`. See [Stage A](ou-mehler-discharge-plan.md#stage-a--mehler-operator-on-l-250-lines-5-7-days-no-new-axioms) (~250 lines / ~1 week). | `ouSemigroupAct_eq_smul_of_mem_wienerChaos`, `ouSemigroupAct_eLpNorm_hypercontractive` (same file); `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` (`PolynomialChaosConcentration.lean`). pphi2's `Pphi2.NelsonEstimate.{ChaosTailBridge, PolynomialChaosBridge}` consume the last via `polynomial_chaos_concentration`. |
-| `ouSemigroupAct_eq_smul_of_mem_wienerChaos` | [`GaussianHilbert/OUEigenfunctions.lean:507`](../GaussianHilbert/OUEigenfunctions.lean#L507) | BGL §2.7.4 (OU eigenvalues on chaos: `T_t H_k = e^{-kt} H_k`); Janson §3.4 (Mehler-Hermite identity); Nualart §1.4 | **Placeholder** | LP | OU semigroup multiplies each Hermite chaos `H_k` by `e^{-kt}`. Direct discharge: prove the 1D Mehler-Hermite identity `∫ He_k(e^{-t}x + √(1-e^{-2t})y) dγ(y) = e^{-kt} He_k(x)` via Hermite generating function; tensor product to multivariate; extend to closure by linearity + density. See [Stage C′](ou-mehler-discharge-plan.md#stage-c--hermite-eigenvalues-via-1d-mehler-hermite-identity-250-lines-parallel-to-ab) (~250 lines / ~1 week). | `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` |
-| `ouSemigroupAct_eLpNorm_hypercontractive` | [`GaussianHilbert/OUEigenfunctions.lean:528`](../GaussianHilbert/OUEigenfunctions.lean#L528) | E. Nelson, *J. Funct. Anal.* 12 §3 (1973); BGL Theorem 5.2.3 | **Placeholder** | LP | Bonami-Beckner-Nelson hypercontractive bound `‖T_t f‖_{L^p} ≤ ‖f‖_{L^q}` for `e^{2t} ≥ p-1`, `q = 2`. Discharge: Bakry-Émery curvature 1 on `(Fin n → ℝ, γ_n)` → LSI(1) → markov-semigroups `gross_lsi_implies_hypercontractive`. See [Stages C+E](ou-mehler-discharge-plan.md#stage-c--multivariate-bakryemeryspace-600-lines-10-14-days-no-new-axioms) (~650 lines / ~2-3 weeks; cross-repo dep on markov-semigroups for the Gross axiom — see the plan's "cross-repo dependency note"). Shortcut available via [LSI tensorization (Stage C-β)](ou-mehler-discharge-plan.md#optional-shortcut-stage-c--no-full-be-instance-1-axiom): adds 1 textbook axiom but cuts ~1 week. | `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` (the load-bearing Bonami-Beckner-Nelson step in the polynomial-chaos concentration argument) |
+| `ouSemigroupAct_eLpNorm_hypercontractive` | [`GaussianHilbert/OUEigenfunctions.lean:724`](../GaussianHilbert/OUEigenfunctions.lean#L724) | E. Nelson, *J. Funct. Anal.* 12 §3 (1973); BGL Theorem 5.2.3 | **Placeholder** | LP | Bonami-Beckner-Nelson hypercontractive bound `‖T_t f‖_{L^p} ≤ ‖f‖_{L^q}` for `e^{2t} ≥ p-1`, `q = 2`. Discharge: Bakry-Émery curvature 1 on `(Fin n → ℝ, γ_n)` → LSI(1) → markov-semigroups `gross_lsi_implies_hypercontractive`. See [Stages C+E](ou-mehler-discharge-plan.md#stage-c--multivariate-bakryemeryspace-600-lines-10-14-days-no-new-axioms) (~650 lines / ~2-3 weeks; cross-repo dep on markov-semigroups for the Gross axiom — see the plan's "cross-repo dependency note"). Shortcut available via [LSI tensorization (Stage C-β)](ou-mehler-discharge-plan.md#optional-shortcut-stage-c--no-full-be-instance-1-axiom): adds 1 textbook axiom but cuts ~1 week. | `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` (the load-bearing Bonami-Beckner-Nelson step in the polynomial-chaos concentration argument) |
 
 ## Open vetting items
 
@@ -103,22 +112,22 @@ Mehler-kernel BGL axioms (markov-semigroups).
    constant `e^{2t} ≥ p-1` matches the strongest published version
    (Janson §5.1 has minor variations in exponent thresholds across
    sub-versions).
-2. **None of the OU placeholders have been DT-vetted yet** — this is
-   acceptable while they remain pure placeholder axioms (the statements
-   are simple eigenvalue and norm bounds, well-cited), but a DT pass
-   would be valuable before the discharge plan is executed in case the
-   discharge surfaces a hypothesis-strength issue not visible from the
-   axiom statement alone.
+2. **The spectral discharge avoids the Mehler kernel for now** — this
+   is acceptable for the current downstream uses, but a future native
+   proof of hypercontractivity or positivity/Markov properties should
+   still identify `ouSemigroupAct` with the textbook Mehler operator.
 
 ## Related discharge plans (in this repo)
 
 - [`docs/polynomial-chaos-roadmap.md`](polynomial-chaos-roadmap.md) —
   current-state status report for the four chaos-cluster files. All
-  four are sorry-free; the only outstanding work is the OU placeholder
+  four are sorry-free; the only outstanding work is the remaining OU
+  hypercontractive
   discharge.
 - [`docs/ou-mehler-discharge-plan.md`](ou-mehler-discharge-plan.md) —
-  detailed five-stage plan for discharging the 3 OU placeholder axioms
-  via the Mehler kernel + Bakry-Émery + Gross route.
+  detailed five-stage plan for the full Mehler-kernel route. Two former
+  OU placeholders have already been discharged spectrally; the
+  hypercontractive placeholder remains.
 
 ## Maintenance protocol
 

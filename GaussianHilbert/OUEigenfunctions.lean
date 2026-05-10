@@ -63,6 +63,7 @@ import Mathlib.Analysis.Calculus.ContDiff.Basic
 import Mathlib.Analysis.Calculus.ContDiff.Polynomial
 import Mathlib.Analysis.Calculus.ContDiff.Operations
 import Mathlib.Analysis.Calculus.ContDiff.FiniteDimension
+import Mathlib.Analysis.Normed.Lp.lpSpace
 
 noncomputable section
 
@@ -476,21 +477,193 @@ theorem ouGenerator_hermiteMultiEval {n : ℕ} (α : Fin n → ℕ)
   push_cast
   ring
 
-/-- **The Ornstein–Uhlenbeck semigroup action on $L^2(\gamma_n)$.**
+/-- The chaos-coordinate isometry coming from the Wiener-chaos Hilbert-sum
+decomposition. -/
+noncomputable def chaosCoordEquiv (n : ℕ) :
+    MeasureTheory.Lp ℝ 2 (stdGaussianFin n) ≃ₗᵢ[ℝ]
+      lp (fun k : ℕ => wienerChaos n k) 2 :=
+  (wienerChaos_isHilbertSum n).linearIsometryEquiv
 
-The OU semigroup $T_t$ acts on $L^2(\gamma_n)$ as a continuous linear
-map: it is the heat semigroup of the OU generator
-$L = \Delta - x \cdot \nabla$, equivalently the Mehler convolution
-$(T_t f)(x) = \int f(e^{-t} x + \sqrt{1 - e^{-2t}}\, y)\, d\gamma_n(y)$.
+/-- The spectral decay factor on the `k`-th Wiener chaos. -/
+private noncomputable def chaosDecay (k : ℕ) (t : ℝ) : ℝ :=
+  Real.exp (-(k : ℝ) * t)
 
-This is declared as an opaque axiom; its constraining properties are
-the chaos-action and hypercontractivity axioms below. A concrete
-construction (Mehler formula) lives in
-`Diffusion/OrnsteinUhlenbeck.lean` (skeleton). -/
-axiom ouSemigroupAct (n : ℕ) (t : ℝ) :
+/-- The chaos-coordinate scaling on the `k`-th Wiener chaos. -/
+private noncomputable def chaosScale {n : ℕ} (k : ℕ) (t : ℝ)
+    (x : wienerChaos n k) : wienerChaos n k :=
+  ⟨chaosDecay k t • (x : MeasureTheory.Lp ℝ 2 (stdGaussianFin n)),
+    Submodule.smul_mem (wienerChaos n k) _ x.2⟩
+
+@[simp] private lemma chaosScale_coe {n : ℕ} (k : ℕ) (t : ℝ)
+    (x : wienerChaos n k) :
+    ((chaosScale k t x : wienerChaos n k) :
+      MeasureTheory.Lp ℝ 2 (stdGaussianFin n)) =
+      chaosDecay k t • (x : MeasureTheory.Lp ℝ 2 (stdGaussianFin n)) :=
+  rfl
+
+private lemma chaosDecay_norm_le_one (k : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    ‖chaosDecay k t‖ ≤ 1 := by
+  have hkt : 0 ≤ (k : ℝ) * t := mul_nonneg (by exact_mod_cast Nat.zero_le k) ht
+  have hnonneg : 0 ≤ chaosDecay k t := by
+    unfold chaosDecay
+    positivity
+  have hle : chaosDecay k t ≤ 1 := by
+    unfold chaosDecay
+    exact Real.exp_le_one_iff.mpr (by linarith)
+  rwa [Real.norm_eq_abs, abs_of_nonneg hnonneg]
+
+private lemma chaosDiag_memℓp (n : ℕ) (t : ℝ) (ht : 0 ≤ t)
+    (f : lp (fun k : ℕ => wienerChaos n k) 2) :
+    Memℓp (fun k : ℕ => chaosScale k t (f k)) 2 := by
+  apply memℓp_gen
+  have hf : Summable (fun k : ℕ => ‖f k‖ ^ (2 : ℝ)) :=
+    (lp.memℓp f).summable (by norm_num)
+  refine Summable.of_nonneg_of_le (fun _ => by positivity) ?_ hf
+  intro k
+  have hnorm : ‖chaosScale k t (f k)‖ ≤ ‖f k‖ := by
+    change ‖((chaosScale k t (f k) : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n))‖ ≤
+      ‖((f k : wienerChaos n k) : MeasureTheory.Lp ℝ 2 (stdGaussianFin n))‖
+    rw [chaosScale_coe]
+    calc
+      ‖chaosDecay k t • (((f k : wienerChaos n k) :
+          MeasureTheory.Lp ℝ 2 (stdGaussianFin n)))‖
+          ≤ ‖chaosDecay k t‖ *
+            ‖(((f k : wienerChaos n k) :
+              MeasureTheory.Lp ℝ 2 (stdGaussianFin n)))‖ := norm_smul_le _ _
+      _ ≤ 1 * ‖(((f k : wienerChaos n k) :
+          MeasureTheory.Lp ℝ 2 (stdGaussianFin n)))‖ := by
+        gcongr
+        exact chaosDecay_norm_le_one k t ht
+      _ = ‖((f k : wienerChaos n k) : MeasureTheory.Lp ℝ 2 (stdGaussianFin n))‖ := by ring
+  have hleft : 0 ≤ ‖chaosScale k t (f k)‖ := norm_nonneg _
+  change ‖chaosScale k t (f k)‖ ^ (2 : ℝ) ≤ ‖f k‖ ^ (2 : ℝ)
+  simpa using Real.rpow_le_rpow hleft hnorm (by norm_num : 0 ≤ (2 : ℝ))
+
+private noncomputable def chaosDiagLM (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    lp (fun k : ℕ => wienerChaos n k) 2 →ₗ[ℝ]
+      lp (fun k : ℕ => wienerChaos n k) 2 where
+  toFun f := ⟨fun k : ℕ => chaosScale k t (f k), chaosDiag_memℓp n t ht f⟩
+  map_add' f g := by
+    apply lp.ext
+    funext k
+    apply Subtype.ext
+    show ((chaosScale k t ((f + g) k) : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n)) =
+      ((chaosScale k t (f k) + chaosScale k t (g k) : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n))
+    change chaosDecay k t • ((((f + g) k : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n))) =
+      chaosDecay k t • (((f k : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n))) +
+      chaosDecay k t • (((g k : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n)))
+    rw [show ((((f + g) k : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n))) =
+        (((f k : wienerChaos n k) : MeasureTheory.Lp ℝ 2 (stdGaussianFin n))) +
+        (((g k : wienerChaos n k) : MeasureTheory.Lp ℝ 2 (stdGaussianFin n))) from rfl]
+    rw [smul_add]
+  map_smul' c f := by
+    apply lp.ext
+    funext k
+    apply Subtype.ext
+    show ((chaosScale k t ((c • f) k) : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n)) =
+      ((c • chaosScale k t (f k) : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n))
+    change chaosDecay k t • (((c • f) k : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n)) =
+      c • (chaosDecay k t • (((f k : wienerChaos n k) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n))))
+    rw [show (((c • f) k : wienerChaos n k) : MeasureTheory.Lp ℝ 2 (stdGaussianFin n)) =
+        c • (((f k : wienerChaos n k) : MeasureTheory.Lp ℝ 2 (stdGaussianFin n))) from rfl]
+    simpa [smul_smul, mul_comm]
+
+private lemma chaosDiagLM_norm_le (n : ℕ) (t : ℝ) (ht : 0 ≤ t)
+    (f : lp (fun k : ℕ => wienerChaos n k) 2) :
+    ‖chaosDiagLM n t ht f‖ ≤ ‖f‖ := by
+  have hp : 0 < ((2 : ENNReal).toReal) := by norm_num
+  have hsum : ∀ s : Finset ℕ,
+      ∑ k ∈ s, ‖chaosDiagLM n t ht f k‖ ^ (2 : ℝ) ≤ ‖f‖ ^ (2 : ℝ) := by
+    intro s
+    refine le_trans ?_ (lp.sum_rpow_le_norm_rpow (p := (2 : ENNReal)) hp f s)
+    refine Finset.sum_le_sum ?_
+    intro k hk
+    have hnorm : ‖chaosDiagLM n t ht f k‖ ≤ ‖f k‖ := by
+      change ‖((chaosScale k t (f k) : wienerChaos n k) :
+          MeasureTheory.Lp ℝ 2 (stdGaussianFin n))‖ ≤
+        ‖((f k : wienerChaos n k) : MeasureTheory.Lp ℝ 2 (stdGaussianFin n))‖
+      rw [chaosScale_coe]
+      calc
+        ‖chaosDecay k t • (((f k : wienerChaos n k) :
+            MeasureTheory.Lp ℝ 2 (stdGaussianFin n)))‖
+            ≤ ‖chaosDecay k t‖ *
+              ‖(((f k : wienerChaos n k) :
+                MeasureTheory.Lp ℝ 2 (stdGaussianFin n)))‖ := norm_smul_le _ _
+        _ ≤ 1 * ‖(((f k : wienerChaos n k) :
+            MeasureTheory.Lp ℝ 2 (stdGaussianFin n)))‖ := by
+          gcongr
+          exact chaosDecay_norm_le_one k t ht
+        _ = ‖((f k : wienerChaos n k) : MeasureTheory.Lp ℝ 2 (stdGaussianFin n))‖ := by ring
+    have hleft : 0 ≤ ‖chaosDiagLM n t ht f k‖ := norm_nonneg _
+    simpa using Real.rpow_le_rpow hleft hnorm
+      (by norm_num : 0 ≤ ENNReal.toReal (2 : ENNReal))
+  exact lp.norm_le_of_forall_sum_le
+    (p := (2 : ENNReal)) hp (norm_nonneg _) (f := chaosDiagLM n t ht f) hsum
+
+/-- The diagonal scaling map on chaos coordinates. -/
+noncomputable def chaosDiagCLM (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    lp (fun k : ℕ => wienerChaos n k) 2 →L[ℝ]
+      lp (fun k : ℕ => wienerChaos n k) 2 :=
+  LinearMap.mkContinuous (chaosDiagLM n t ht) 1 (by
+    intro f
+    simpa using chaosDiagLM_norm_le n t ht f)
+
+@[simp] lemma chaosDiagCLM_apply_single (n : ℕ) (t : ℝ) (ht : 0 ≤ t)
+    (k : ℕ) (x : wienerChaos n k) :
+    chaosDiagCLM n t ht (lp.single 2 k x) =
+      chaosDecay k t • lp.single 2 k x := by
+  change chaosDiagLM n t ht (lp.single 2 k x) = chaosDecay k t • lp.single 2 k x
+  apply lp.ext
+  funext j
+  by_cases h : j = k
+  · subst h
+    apply Subtype.ext
+    simp [chaosDiagLM, chaosScale]
+  · simp [chaosDiagLM, chaosScale, h]
+
+/-- The Ornstein-Uhlenbeck semigroup acting on `L²(γ_n)`, defined
+spectrally via the Wiener-chaos `IsHilbertSum` decomposition.
+
+For `t ≥ 0`, this acts as multiplication by `e^{-kt}` on each Wiener
+chaos `wienerChaos n k`. For `t < 0`, the conventional fallback is the
+zero map; no consumer in this codebase uses that branch.
+
+**Mathematical agreement with the Mehler integral.** This operator is
+equal to the textbook OU semigroup defined by the Mehler integral
+`(M_t f)(x) = ∫ f(e^{-t}·x + √(1-e^{-2t})·y) dγ_n(y)`, because both
+are bounded operators on `L²(γ_n)` agreeing on the algebraic direct
+sum `⊕_k wienerChaos n k`, which is dense by
+`wienerChaos_isHilbertSum`. By continuity plus density, the operators
+coincide.
+
+**Architectural debt.** While mathematically identical to the spatial
+Mehler integral, this spectral definition obscures the pointwise
+geometry of the operator. Proving positivity, Dirichlet-form identities,
+or native hypercontractivity from this form alone is impractical. A
+future discharge of `ouSemigroupAct_eLpNorm_hypercontractive` will
+require formalizing the Mehler integral and proving agreement with the
+present spectral definition. -/
+noncomputable def ouSemigroupAct (n : ℕ) (t : ℝ) :
     MeasureTheory.Lp ℝ 2 (stdGaussianFin n) →L[ℝ]
-      MeasureTheory.Lp ℝ 2 (stdGaussianFin n)
+      MeasureTheory.Lp ℝ 2 (stdGaussianFin n) :=
+  if ht : 0 ≤ t then
+    let coord := (chaosCoordEquiv n).toContinuousLinearEquiv
+    coord.symm.toContinuousLinearMap.comp
+      ((chaosDiagCLM n t ht).comp coord.toContinuousLinearMap)
+  else 0
 
+set_option maxHeartbeats 1600000
 /-- **The OU semigroup acts on $\mathcal H_k$ by $e^{-kt}$.**
 
 The OU semigroup $T_t$ on $L^2(\gamma_n)$ commutes with the spectral
@@ -504,11 +677,34 @@ of $L$ with eigenvalue $-k$, $T_t$ is multiplication by $e^{-kt}$.
 
 **Reference:** Janson, *Gaussian Hilbert Spaces*, Theorem 4.4 +
 the OU semigroup's L²-spectral-resolution. Bakry-Gentil-Ledoux §2.7. -/
-axiom ouSemigroupAct_eq_smul_of_mem_wienerChaos {n : ℕ} (k : ℕ)
+theorem ouSemigroupAct_eq_smul_of_mem_wienerChaos {n : ℕ} (k : ℕ)
     (t : ℝ) (_ht : 0 ≤ t)
     (f : MeasureTheory.Lp ℝ 2 (stdGaussianFin n))
     (_hf : f ∈ wienerChaos n k) :
-    ouSemigroupAct n t f = Real.exp (-(k : ℝ) * t) • f
+    ouSemigroupAct n t f = Real.exp (-(k : ℝ) * t) • f := by
+  let coord : MeasureTheory.Lp ℝ 2 (stdGaussianFin n) ≃L[ℝ]
+      lp (fun j : ℕ => wienerChaos n j) 2 :=
+    (chaosCoordEquiv n).toContinuousLinearEquiv
+  let fk : wienerChaos n k := ⟨f, _hf⟩
+  have hsymm : coord.symm (lp.single 2 k fk) = f := by
+    change ((chaosCoordEquiv n).symm (lp.single 2 k fk) :
+      MeasureTheory.Lp ℝ 2 (stdGaussianFin n)) = f
+    simpa [chaosCoordEquiv, fk] using
+      (wienerChaos_isHilbertSum n).linearIsometryEquiv_symm_apply_single (i := k) fk
+  have hcoords : coord f = lp.single 2 k fk := by
+    have h := congrArg coord hsymm
+    simpa using h.symm
+  have hact : coord (ouSemigroupAct n t f) = chaosDiagCLM n t _ht (coord f) := by
+    rw [ouSemigroupAct, dif_pos _ht]
+    change coord (coord.symm (chaosDiagCLM n t _ht (coord f))) =
+      chaosDiagCLM n t _ht (coord f)
+    simp
+  apply coord.injective
+  calc
+    coord (ouSemigroupAct n t f) = chaosDiagCLM n t _ht (coord f) := hact
+    _ = chaosDiagCLM n t _ht (lp.single 2 k fk) := by rw [hcoords]
+    _ = chaosDecay k t • lp.single 2 k fk := chaosDiagCLM_apply_single n t _ht k fk
+    _ = coord (chaosDecay k t • f) := by rw [coord.map_smul, hcoords]
 
 /-- **Nelson's hypercontractive bound for the OU semigroup.**
 
