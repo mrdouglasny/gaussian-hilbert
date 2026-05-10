@@ -86,7 +86,13 @@ compact, Gamma distributions, etc.) all satisfy the hypothesis.
 4. Combine: `‖f - p‖_{L²(μ)} ≤ ‖f - g‖_{L²(μ)} + ‖g - p‖_{L²(B_R, μ)}
    + ‖p‖_{L²(B_R^c, μ)}`, each term `< ε/3` for suitable choices.
 
-(NOT VERIFIED) -/
+**Vetting:** Gemini deep-think DT-2.5 (2026-05-09): **Standard.** The
+sub-Gaussian hypothesis implies Carleman's condition, hence the moment
+problem is determinate, hence polynomials are dense in `L²(μ)`. The
+hypothesis is sufficient (and weaker hypotheses like a second moment
+alone do *not* suffice — Stieltjes-style indeterminate examples exist).
+Lean signature is correct. Full record:
+[pphi2/docs/gaussian-field-axiom-vet-2026-05-09.md](https://github.com/mrdouglasny/pphi2/blob/main/docs/gaussian-field-axiom-vet-2026-05-09.md). -/
 axiom polynomial_dense_L2_of_subGaussian {n : ℕ}
     (μ : Measure (Fin n → ℝ)) [IsProbabilityMeasure μ]
     (hμ : IsSubGaussianMeasure μ)
