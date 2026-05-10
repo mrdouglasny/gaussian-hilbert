@@ -101,3 +101,14 @@ foundation + 3 OU placeholders). `lake build` clean. Snapshot:
 plans: [`docs/AXIOM_AUDIT.md`](docs/AXIOM_AUDIT.md). Forward-looking
 development directions motivated by Janson's textbook chapters:
 [`TODO.md`](TODO.md).
+
+## For physics readers
+
+This framework is the measure-theoretic version of free-field Feynman
+diagrams. See [`docs/physics-dictionary.md`](docs/physics-dictionary.md)
+for the line-by-line dictionary (Wick's theorem ↔ Isserlis; normal
+ordering ↔ Hermite polynomials; Fock space ↔ Wiener chaos; free
+Hamiltonian ↔ OU generator; Bonami-Beckner-Nelson hypercontractive
+bound ↔ this repo's `ouSemigroupAct_eLpNorm_hypercontractive`; etc.)
+plus a comparison of what each side develops and what it leaves to
+the other.
