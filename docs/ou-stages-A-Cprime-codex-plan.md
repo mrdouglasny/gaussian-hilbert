@@ -54,6 +54,24 @@ remain).
 
 ---
 
+## Hermite convention check
+
+Mathlib's `Polynomial.hermite` is the **probabilists'** Hermite polynomial
+(verified 2026-05-10 against `Mathlib/RingTheory/Polynomial/Hermite/Basic.lean`):
+
+```lean
+/-- the probabilists' Hermite polynomials. -/
+noncomputable def hermite : ℕ → Polynomial ℤ
+  | 0 => 1
+  | n + 1 => X * hermite n - derivative (hermite n)
+```
+
+Verified values: `He_0 = 1, He_1 = x, He_2 = x² - 1, He_3 = x³ - 3x`
+(probabilists' — matches Mehler kernel). The Mehler-Hermite identity in
+C′.1 below holds as written. **No rescaling of `hermiteEval` is required.**
+
+---
+
 ## Stage A: Mehler operator on `L²(γ_n)`
 
 **File**: new `GaussianHilbert/MehlerKernel.lean`.
@@ -107,6 +125,14 @@ lemma stdGaussianFin_mehler_pushforward (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
 1D `gaussianReal_add_gaussianReal_of_indepFun` over coordinates via
 `Measure.pi` and `MeasurePreserving.prod`. ~50-80 lines.
 
+**Mathlib API hint**: to lift the 1D fact to n-D inside `Measure.pi`,
+the input/output types are `(Fin n → ℝ) × (Fin n → ℝ)` and `Fin n → ℝ`.
+The pushforward fundamentally needs the rearrangement
+`(Fin n → ℝ) × (Fin n → ℝ) ≃ Fin n → ℝ × ℝ`, which is
+**`Equiv.arrowProdEquivProdArrow`**. After that swap, the n-D
+measure-preserving statement reduces to a `Measure.pi`-of-1D-facts
+argument.
+
 ### A.4 L²-contraction
 
 ```lean
@@ -128,27 +154,63 @@ lemma mehlerFun_memLp (n : ℕ) (t : ℝ) (ht : 0 ≤ t)
   sorry
 ```
 
-### A.5 Lp CLM
+### A.5 Lp CLM via direct quotient lifting
+
+**Architectural note (added per Gemini review 2026-05-10)**: do **not**
+build `mehlerOp` by `LinearMap.extend` from a dense subspace.
+Extension produces an abstract topological limit, and proving that
+this limit equals the explicit pointwise integral formula (A.6) for an
+arbitrary L² equivalence class triggers convergence-tracking pain.
+
+Instead, use **direct L² quotient lifting**: apply `mehlerFun` to a
+representative, prove it respects a.e. equality (zero L² norm in,
+zero L² norm out), and package via `MemLp.toLp` +
+`LinearMap.mkContinuous`.
 
 ```lean
-/-- The Mehler operator as a CLM on `Lp ℝ 2 (stdGaussianFin n)`. -/
-noncomputable def mehlerOp (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
-    Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n) := by
-  -- Build by extending mehlerFun from a dense subspace (e.g. continuous
-  -- bounded functions) and using A.4 for boundedness. Operator norm ≤ 1.
+/-- The function-level Mehler operator respects a.e. equality. -/
+lemma mehlerFun_aeEq_of_aeEq (n : ℕ) (t : ℝ) (ht : 0 ≤ t)
+    {f g : (Fin n → ℝ) → ℝ}
+    (hf : MemLp f 2 (stdGaussianFin n)) (hg : MemLp g 2 (stdGaussianFin n))
+    (hfg : f =ᵐ[stdGaussianFin n] g) :
+    mehlerFun n t f =ᵐ[stdGaussianFin n] mehlerFun n t g := by
+  -- (f - g) =ᵐ 0 ⇒ ‖f - g‖_{L²} = 0 ⇒ by A.4 contraction,
+  -- ‖mehlerFun n t (f - g)‖_{L²} = 0 ⇒ mehlerFun n t f =ᵐ mehlerFun n t g
+  -- (using linearity of mehlerFun, which is one line by definition).
   sorry
+
+/-- The Mehler operator as a linear map on `Lp ℝ 2 (stdGaussianFin n)`,
+    via direct lifting from the function-level operator. -/
+noncomputable def mehlerLM (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    Lp ℝ 2 (stdGaussianFin n) →ₗ[ℝ] Lp ℝ 2 (stdGaussianFin n) where
+  toFun f := (mehlerFun_memLp n t ht f.memLp).toLp _
+  map_add' := sorry  -- f.coeFn (f + g) =ᵐ f.coeFn f + f.coeFn g; mehlerFun is linear; use .toLp_add
+  map_smul' := sorry  -- analogous
+
+/-- The Mehler operator as a CLM, upgraded from `mehlerLM` via the
+    A.4 norm bound `‖M_t f‖_{L²} ≤ 1 · ‖f‖_{L²}`. -/
+noncomputable def mehlerOp (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n) :=
+  LinearMap.mkContinuous (mehlerLM n t ht) 1 (fun f => by
+    -- ‖mehlerLM n t ht f‖_{L²} ≤ 1 * ‖f‖_{L²} from A.4 + Memℓp.toLp norm
+    sorry)
 ```
 
-### A.6 Action equation
+### A.6 Action equation (now `rfl` after A.5 quotient-lift)
 
 ```lean
-/-- `mehlerOp` acts as `mehlerFun` at the underlying-function level. -/
+/-- `mehlerOp` acts as `mehlerFun` at the underlying-function level.
+    With the quotient-lift definition in A.5, this is essentially `rfl`
+    via `MemLp.coeFn_toLp`. -/
 lemma mehlerOp_apply (n : ℕ) (t : ℝ) (ht : 0 ≤ t)
     (f : Lp ℝ 2 (stdGaussianFin n)) :
     (mehlerOp n t ht f : (Fin n → ℝ) → ℝ) =ᵐ[stdGaussianFin n]
-      mehlerFun n t f := by
-  sorry
+      mehlerFun n t (f : (Fin n → ℝ) → ℝ) :=
+  MemLp.coeFn_toLp _
 ```
+
+This makes A.6 trivial (one line) instead of a 50-line convergence
+chase.
 
 **Stage A total**: ~250 lines. The hardest piece is A.3 (the Gaussian
 sum identity); A.5 (Lp descent) is mechanical but tedious.
@@ -171,27 +233,89 @@ theorem mehler_hermite_identity_1d (k : ℕ) (t : ℝ) (ht : 0 ≤ t) (x : ℝ) 
     ∫ y, hermiteEval k (Real.exp (-t) * x + Real.sqrt (1 - Real.exp (-2*t)) * y)
       ∂(Probability.gaussianReal 0 1) =
     Real.exp (-(k : ℝ) * t) * hermiteEval k x := by
-  -- Generating-function proof:
-  --   1. Use exp(zx - z²/2) = ∑_n (z^n / n!) · He_n(x) (Hermite GF).
-  --   2. Substitute z = e^{-t}·something + √(1-e^{-2t})·something else, etc.
-  --   3. Exchange sum and integral on a strip (absolute convergence of GF
-  --      in a neighbourhood of z = 0).
-  --   4. Perform the Gaussian integral in y:
-  --        ∫ exp(z·√(1-e^{-2t})·y) dγ(y) = exp(z²·(1-e^{-2t})/2).
-  --   5. Multiply through and read off coefficients of z^k:
-  --        LHS coeff = ∫ He_k(...)dγ.
-  --        RHS coeff = e^{-kt} · He_k(x) · (1 / k!) · k! = e^{-kt} · He_k(x).
+  -- See "Recommended proof: induction + Stein's lemma" below.
   sorry
 ```
 
-**Alternative proof routes** (use whichever is most ergonomic in Lean):
+### Recommended proof for C′.1: induction + Stein's lemma
 
-* **Induction on k + integration by parts**: longer but elementary;
-  uses Hermite's recursion `He_{k+1}(x) = x·He_k(x) - k·He_{k-1}(x)`.
-* **Rodrigues formula**: `He_k(x) = (-1)^k e^{x²/2} d^k/dx^k e^{-x²/2}`,
-  exchange differentiation and Gaussian integration via DCT.
+**Architectural note (per Gemini review 2026-05-10)**: do **not**
+attempt the generating-function proof. It triggers a Dominated
+Convergence / `HasSum` typeclass nightmare on `∫ ∑ = ∑ ∫`. Use the
+**100% algebraic** induction route below — it has zero limits, zero
+infinite series, and zero analytic content beyond polynomial integration
+by parts.
 
-The generating-function proof is recommended; ~80-150 lines.
+**Setup**: let `a := Real.exp (-t)` and `b := Real.sqrt (1 - Real.exp (-2*t))`.
+Note `a² + b² = 1` (one-line algebra).
+
+**Three ingredients** (all already-statable in Mathlib):
+
+1. **Probabilist Hermite recurrence** (from
+   `Polynomial.hermite_succ`):
+   ```
+   He_{k+1}(x) = x · He_k(x) - He_k'(x)
+   ```
+   Equivalently (using `He_k'(x) = k · He_{k-1}(x)`):
+   ```
+   He_{k+1}(x) = x · He_k(x) - k · He_{k-1}(x).
+   ```
+2. **Stein's lemma for polynomials** (a.k.a. Gaussian integration by
+   parts):
+   ```
+   ∫ y · P(y) dγ(y) = ∫ P'(y) dγ(y).
+   ```
+   Provable from the Gaussian density derivative `(γ)' = -y · γ`.
+   Mathlib has `ProbabilityTheory.gaussianReal_integral_mul_id` style
+   lemmas; if not in this exact form, derive directly via integration
+   by parts on `Polynomial.eval P` against `gaussianPDF 0 1`.
+
+3. **Hermite derivative**:
+   ```
+   He_k'(x) = k · He_{k-1}(x)
+   ```
+   Already in Mathlib via `Polynomial.derivative_hermite`.
+
+**Induction step**: assume the identity holds for `k` and `k - 1`.
+Prove for `k + 1`. Let `u := a*x + b*y` (so `du/dy = b`).
+
+```
+∫ He_{k+1}(u) dγ(y)
+  = ∫ [u · He_k(u) - k · He_{k-1}(u)] dγ(y)        -- by recurrence (1)
+  = a*x · ∫ He_k(u) dγ(y) + b · ∫ y · He_k(u) dγ(y)
+      - k · ∫ He_{k-1}(u) dγ(y)                    -- linearity, expand u
+  = a*x · (a^k · He_k(x))                          -- IH at level k
+      + b · ∫ y · He_k(u) dγ(y)
+      - k · (a^{k-1} · He_{k-1}(x))                -- IH at level (k-1)
+  = a^{k+1} · x · He_k(x)
+      + b · b · ∫ He_k'(u) dγ(y)                   -- Stein (2):
+                                                   -- d/dy He_k(u) = b · He_k'(u),
+                                                   -- so ∫ y · He_k(u) dγ = ∫ d/dy[He_k(u)] / 1 dγ
+                                                   -- = b · ∫ He_k'(u) dγ
+      - k · a^{k-1} · He_{k-1}(x)
+  = a^{k+1} · x · He_k(x)
+      + b² · k · ∫ He_{k-1}(u) dγ(y)               -- by (3): He_k' = k · He_{k-1}
+      - k · a^{k-1} · He_{k-1}(x)
+  = a^{k+1} · x · He_k(x)
+      + b² · k · a^{k-1} · He_{k-1}(x)             -- IH at level (k-1)
+      - k · a^{k-1} · He_{k-1}(x)
+  = a^{k+1} · x · He_k(x)
+      + (b² - 1) · k · a^{k-1} · He_{k-1}(x)
+  = a^{k+1} · x · He_k(x) - a² · k · a^{k-1} · He_{k-1}(x)  -- since b² = 1 - a²
+  = a^{k+1} · x · He_k(x) - a^{k+1} · k · He_{k-1}(x)
+  = a^{k+1} · [x · He_k(x) - k · He_{k-1}(x)]
+  = a^{k+1} · He_{k+1}(x)                          -- by recurrence (1) at x.
+```
+
+Substituting `a^{k+1} = Real.exp (-(k+1)·t)` closes the induction.
+
+**Base cases**:
+* `k = 0`: `∫ He_0(u) dγ(y) = ∫ 1 dγ(y) = 1 = e^{0} · He_0(x)`. ✓
+* `k = 1`: `∫ He_1(u) dγ(y) = ∫ (a*x + b*y) dγ(y) = a*x · 1 + b · 0 = a · He_1(x)`. ✓
+
+This is **purely polynomial algebra** — no DCT, no `HasSum`, no
+generating function. Estimated ~80-120 lines (Stein's lemma may need
+~30 if not directly in Mathlib).
 
 ### C′.2 Multivariate version
 
@@ -219,19 +343,55 @@ theorem mehlerOp_hermiteMultiLp (n : ℕ) (α : Fin n → ℕ) (t : ℝ) (ht : 0
 theorem mehlerOp_smul_of_mem_wienerChaos (n k : ℕ) (t : ℝ) (ht : 0 ≤ t)
     (f : Lp ℝ 2 (stdGaussianFin n)) (hf : f ∈ wienerChaos n k) :
     mehlerOp n t ht f = Real.exp (-(k : ℝ) * t) • f := by
-  -- 1. wienerChaos is defined as topologicalClosure of span S_k where
-  --    S_k = {hermiteMultiLp α : totalDegree α = k}.
-  -- 2. By C′.2, for each α ∈ S_k, mehlerOp n t ht (hermiteMultiLp α) =
-  --    e^{-kt} • hermiteMultiLp α.
-  -- 3. By linearity of mehlerOp, this extends to span S_k.
-  -- 4. By continuity of mehlerOp, this extends to closure(span S_k).
-  -- Mathlib pattern: `Submodule.span_induction` followed by
-  --   `Submodule.topologicalClosure_minimal` with the closed equality
-  --   predicate.
+  -- See "Recommended proof using ContinuousLinearMap.eqOn_closure" below.
   sorry
 ```
 
-~80-100 lines.
+### Recommended proof for C′.3: `ContinuousLinearMap.eqOn_closure`
+
+**Architectural note (per Gemini review 2026-05-10)**: state both sides as
+**continuous linear maps** equal on a dense submodule, then lift to the
+closure in 2-3 lines via `ContinuousLinearMap.eqOn_closure` (or
+`ContinuousLinearMap.ext_on`).
+
+```lean
+theorem mehlerOp_smul_of_mem_wienerChaos (n k : ℕ) (t : ℝ) (ht : 0 ≤ t)
+    (f : Lp ℝ 2 (stdGaussianFin n)) (hf : f ∈ wienerChaos n k) :
+    mehlerOp n t ht f = Real.exp (-(k : ℝ) * t) • f := by
+  -- View both sides as CLMs Lp → Lp:
+  --   LHS: mehlerOp n t ht
+  --   RHS: (Real.exp (-(k : ℝ) * t)) • ContinuousLinearMap.id ℝ _
+  set lhs : Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n) :=
+    mehlerOp n t ht
+  set rhs : Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n) :=
+    (Real.exp (-(k : ℝ) * t)) • ContinuousLinearMap.id ℝ _
+  -- Show they agree on the spanning set S_k = { hermiteMultiLp α : totalDegree α = k }.
+  -- C′.2 gives us this for each α with totalDegree α = k:
+  have h_basis : ∀ α : Fin n → ℕ, MultiIndex.totalDegree α = k →
+      lhs (hermiteMultiLp α) = rhs (hermiteMultiLp α) := by
+    intro α hα
+    show mehlerOp n t ht (hermiteMultiLp α) =
+      Real.exp (-(k : ℝ) * t) • hermiteMultiLp α
+    rw [mehlerOp_hermiteMultiLp]
+    congr 1
+    -- Real.exp (-(totalDegree α : ℝ) * t) = Real.exp (-(k : ℝ) * t)
+    rw [hα]
+  -- Linearity extends from the spanning set to the span (Submodule.span_induction).
+  -- Continuity extends from the span to the closure (Submodule.topologicalClosure)
+  -- via ContinuousLinearMap.eqOn_closure / Submodule.topologicalClosure_minimal.
+  exact ContinuousLinearMap.eqOn_closure
+    (s := Set.range (fun α : { α : Fin n → ℕ // MultiIndex.totalDegree α = k } =>
+            hermiteMultiLp α.1))
+    (fun _ ⟨⟨α, hα⟩, h⟩ => h ▸ h_basis α hα) hf
+  -- (Adjust the argument shape to match wienerChaos's actual definition;
+  -- wienerChaos n k = (Submodule.span ℝ S_k).topologicalClosure where
+  -- S_k is defined via Set.image of MultiIndex.totalDegree predicate.)
+```
+
+`ContinuousLinearMap.eqOn_closure` is the right Mathlib idiom: equality
+of two continuous linear maps on a closed set is itself closed, so it
+suffices to check on a dense subset (the spanning set, by linearity).
+Estimated ~30-50 lines.
 
 **Stage C′ total**: ~250 lines. C′.1 (1D identity) is the bulk;
 C′.2-3 are mostly bookkeeping.
@@ -298,13 +458,27 @@ Update `GaussianHilbert/Basic.lean` (or wherever the index file is) to
 
 * **Start with Stage A.3** (the Gaussian sum identity) — if that
   doesn't go cleanly, the rest stalls. Pin it down first as a
-  standalone lemma, then layer A.4-A.6 on top.
+  standalone lemma, then layer A.4-A.6 on top. Use
+  **`Equiv.arrowProdEquivProdArrow`** for the n-D pi-type rearrangement.
 
-* **Stage C′.1**: Mathlib has `Polynomial.hermite_genFun` for the
-  generating function, but check Mathlib's exact convention vs. our
-  `hermiteEval` (factor of `(-1)^k` and normalization). If the
-  generating-function proof gets bogged down in convention juggling,
-  fall back to the Rodrigues / induction proof.
+* **Stage A.5/A.6 — direct quotient lift, not `LinearMap.extend`**:
+  package `mehlerFun` directly into Lp via `MemLp.toLp` +
+  `LinearMap.mkContinuous`, with the norm bound coming from A.4.
+  This makes A.6 trivial (`MemLp.coeFn_toLp`). **Do not** use
+  `LinearMap.extend` from a dense subspace — it triggers convergence
+  tracking that's painful to manage.
+
+* **Stage C′.1 — induction + Stein's lemma, not generating function**:
+  the recommended proof uses (1) Hermite recurrence
+  `He_{k+1} = X · He_k - He_k'`, (2) Stein's lemma
+  `∫ y · P(y) dγ = ∫ P'(y) dγ`, (3) `He_k' = k · He_{k-1}`, plus the
+  collapse `b² = 1 - a²` with `a := e^{-t}`, `b := √(1 - e^{-2t})`.
+  Pure polynomial algebra, no DCT, no infinite series, no `HasSum`.
+
+* **Stage C′.3 — `ContinuousLinearMap.eqOn_closure`**: state both sides
+  as CLMs equal on the spanning set `{hermiteMultiLp α : totalDegree α = k}`,
+  then lift via `eqOn_closure`. Avoid hand-rolling
+  `Submodule.span_induction` + closure tracking.
 
 * **Heartbeat budget**: A.5 (Lp CLM construction) and C′.3
   (wienerChaos extension) may need `set_option maxHeartbeats 1600000`.
@@ -319,6 +493,10 @@ Update `GaussianHilbert/Basic.lean` (or wherever the index file is) to
 
 * **Cross-repo**: this plan does *not* touch markov-semigroups.
   All work is contained in gaussian-hilbert.
+
+* **Hermite convention** (verified 2026-05-10): Mathlib's
+  `Polynomial.hermite` IS the probabilists' convention. No rescaling
+  is needed; the Mehler-Hermite identity holds as stated.
 
 ---
 
