@@ -105,8 +105,41 @@ Route 2 can be done as a separate effort then — the spectral
 
 ## Route 1: Spectral-shortcut implementation
 
-This is the **recommended path**. ~150-300 lines, edits only
-`GaussianHilbert/OUEigenfunctions.lean` (no new files).
+This is the **recommended path** (vetted by Gemini deep-think
+2026-05-10: "mathematically bulletproof, architecturally superior for
+this milestone, 100% the correct choice today"). ~150-300 lines, edits
+only `GaussianHilbert/OUEigenfunctions.lean` (no new files).
+
+### Mathematical justification (Gemini-vet)
+
+The spectral diagonal `f ↦ ∑_k e^{-kt} P_k f` (where `P_k` is
+orthogonal projection onto `wienerChaos n k`) is **the same operator**
+as the Mehler integral
+`f ↦ ∫ f(e^{-t}·x + √(1-e^{-2t})·y) dγ(y)` on `L²(γ_n)`. Both are
+bounded continuous operators on `L²` agreeing on the algebraic direct
+sum `⊕_k wienerChaos n k`, which is dense (`wienerChaos_isHilbertSum`).
+By continuity + density, equal everywhere. This is **not** "an
+operator that happens to act diagonally on chaos" — it's the unique
+OU semigroup, in spectral form.
+
+Therefore: the existing axiom `ouSemigroupAct_eLpNorm_hypercontractive`
+(asserting Bonami-Beckner-Nelson hypercontractivity), kept in scope,
+is correct as a statement about Route 1's `ouSemigroupAct`. Every
+property of the Mehler integral is a property of Route 1's operator.
+
+### Architectural debt (mandatory docstring)
+
+Route 1 obscures the *spatial* (pointwise) geometry of the operator.
+Pointwise positivity and the Dirichlet-form integration-by-parts
+identity — which are what Bakry-Émery / Gross / Nelson proofs of
+hypercontractivity *natively* rely on — are practically impossible to
+prove from the spectral form alone. To eventually discharge
+`ouSemigroupAct_eLpNorm_hypercontractive` natively, we would need to
+formalize the Mehler integral (Route 2) and prove an
+`ouSemigroupAct_eq_mehler` agreement theorem.
+
+For now, this debt is deferred. **The ouSemigroupAct definition MUST
+carry a docstring acknowledging this** (see Step 4 below).
 
 ### Architectural idea
 
@@ -269,7 +302,38 @@ each level is `=` (Lp itself is the quotient, not the function space).
 
 ### Step 4: ouSemigroupAct definition + chaos-eigenvalue theorem
 
+The `ouSemigroupAct` definition **must** carry the docstring below
+acknowledging the architectural debt — this is mandated by Gemini's
+review and is essential for any future maintainer who needs to
+discharge `ouSemigroupAct_eLpNorm_hypercontractive` natively.
+
 ```lean
+/-- The Ornstein-Uhlenbeck semigroup acting on `L²(γ_n)`, defined
+spectrally via the Wiener-chaos `IsHilbertSum` decomposition.
+
+For `t ≥ 0`, this acts as multiplication by `e^{-kt}` on each Wiener
+chaos `wienerChaos n k`. For `t < 0`, the conventional fallback to the
+zero map (no consumer in the codebase invokes this branch).
+
+**Mathematical agreement with the Mehler integral.** This operator is
+*equal* (not merely "consistent with") to the textbook OU semigroup
+defined by the Mehler integral
+`(M_t f)(x) = ∫ f(e^{-t}·x + √(1-e^{-2t})·y) dγ_n(y)`, because both
+are bounded operators on `L²(γ_n)` agreeing on the algebraic direct
+sum `⊕_k wienerChaos n k`, which is dense (`wienerChaos_isHilbertSum`).
+By continuity + density, the operators are identical.
+
+**Architectural debt.** While mathematically identical to the spatial
+Mehler integral, this spectral definition obscures the pointwise
+geometry of the operator. Proving pointwise/Markovian properties
+(positivity `f ≥ 0 a.e. ⇒ T_t f ≥ 0 a.e.`, Dirichlet-form integration
+by parts `∫ f (-L f) dγ = ∫ |∇f|² dγ`, or any L^p hypercontractivity
+result via Bakry-Émery / Gross / Nelson) **cannot** be done from the
+spectral form alone. Eventual native discharge of
+`ouSemigroupAct_eLpNorm_hypercontractive` will require formalizing
+the Mehler integral (Route 2 in
+`docs/ou-discharge-codex-plan.md`) and proving an
+`ouSemigroupAct_eq_mehler` agreement theorem. -/
 noncomputable def ouSemigroupAct (n : ℕ) (t : ℝ) :
     Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n) :=
   if ht : 0 ≤ t then
@@ -282,11 +346,23 @@ theorem ouSemigroupAct_eq_smul_of_mem_wienerChaos {n : ℕ} (k : ℕ)
     (t : ℝ) (ht : 0 ≤ t)
     (f : Lp ℝ 2 (stdGaussianFin n)) (hf : f ∈ wienerChaos n k) :
     ouSemigroupAct n t f = Real.exp (-(k : ℝ) * t) • f := by
-  -- The proof: e f = lp.single 2 k ⟨f, hf⟩ via
-  -- `IsHilbertSum.linearIsometryEquiv_symm_apply_single`. Apply
-  -- chaosDiagCLM_apply_single. e.symm sends the result back.
-  sorry  -- ~15 lines, see Pitfall 4 below
+  -- Outline:
+  --   1. Set fk : wienerChaos n k := ⟨f, hf⟩.
+  --   2. Use IsHilbertSum.linearIsometryEquiv_symm_apply_single
+  --      to identify e f = lp.single 2 k fk where
+  --      e = (chaosCoordEquiv n).toContinuousLinearEquiv.
+  --   3. Apply chaosDiagCLM_apply_single (Step 3).
+  --   4. e.symm sends the result back to (chaosDecay k t • f).
+  --   5. chaosDecay k t = Real.exp (-(k : ℝ) * t).
+  -- See "Pitfall 4 — set_option placement" and "Pitfall 5 — dif_pos
+  -- unfolding" below.
+  sorry  -- ~15 lines
 ```
+
+**Mandated by Gemini-vet (2026-05-10)**: use
+`IsHilbertSum.linearIsometryEquiv_symm_apply_single` to get
+`e f = lp.single 2 k fk`. Once that's established, the rest is
+straightforward unfolding.
 
 **Pitfall 4: `set_option maxHeartbeats` placement**
 
