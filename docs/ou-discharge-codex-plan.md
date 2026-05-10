@@ -1,4 +1,4 @@
-# Codex hand-off plan: discharge OU axioms via Mehler
+# Codex hand-off plan: discharge OU axioms
 
 **Target axioms** (all in `GaussianHilbert/OUEigenfunctions.lean`):
 
@@ -7,17 +7,66 @@
 
 **NOT in scope here**: `ouSemigroupAct_eLpNorm_hypercontractive` (line 528).
 That one needs Bonami-Beckner-Nelson hypercontractivity, which depends
-on either the full Bakry-Émery instance or LSI tensorization (Stages C
-or C-β in the broader plan). This codex plan covers only the Mehler
-operator definition and the Hermite-eigenvalue identity.
-
-**Effort estimate**: 2-3 active weeks for codex (~500-800 new lines of
-Lean across 2-3 new files). Stages A + C′ + E from the broader
-[`ou-mehler-discharge-plan.md`](ou-mehler-discharge-plan.md).
+on either the full Bakry-Émery instance or LSI tensorization. Out of scope.
 
 **After discharge**: gaussian-hilbert axiom count drops from 4 to 2
 (`polynomial_dense_L2_of_subGaussian` and `ouSemigroupAct_eLpNorm_hypercontractive`
 remain).
+
+---
+
+## Two routes — pick ONE
+
+### Route 1 (RECOMMENDED): Spectral-shortcut
+
+Define `ouSemigroupAct` *directly* as the diagonal decay map on the
+Wiener-chaos Hilbert sum decomposition. The chaos-eigenvalue equation
+becomes structural (true by definition modulo CLM bookkeeping). **No
+Mehler integral needed at all.**
+
+* Effort: ~150-300 new lines, ~3-5 days for codex.
+* New definitions: `chaosCoordEquiv`, `chaosDecay`, `chaosScale`,
+  `chaosDiagCLM`. The `ouSemigroupAct` becomes a one-line definition
+  `e.symm ∘ chaosDiagCLM ∘ e` where `e := chaosCoordEquiv n`.
+* Trade-off: this `ouSemigroupAct` is the *spectral* OU semigroup. To
+  prove it agrees with the *integral-formula* OU semigroup (the Mehler
+  operator) one would need Stage A from Route 2. But all downstream
+  consumers of these axioms (gaussian-hilbert's
+  `polynomial_chaos_concentration`, pphi2's Cluster A) only need the
+  chaos-eigenvalue property, which is structurally trivial under this
+  definition.
+
+**Read the "Route 1" section below for full implementation guidance.**
+This route was attempted by codex on 2026-05-10 with the right
+architecture but several Lean pitfalls (Subtype.ext + a.e. equality,
+`set_option` placement, `LinearMap` over lp-of-subtypes); the section
+calls out each pitfall explicitly so a re-run can land cleanly.
+
+### Route 2 (fallback): Mehler integral
+
+Construct `ouSemigroupAct` as the Lp lifting of the explicit Mehler
+integral
+`(M_t f)(x) = ∫ f(e^{-t}·x + √(1-e^{-2t})·y) dγ_n(y)`,
+then prove the Hermite-eigenvalue identity by induction + Stein's
+lemma.
+
+* Effort: ~500-800 new lines, ~2-3 weeks.
+* Mathematically heavier but produces a more concretely-grounded
+  `ouSemigroupAct` (the integral formula matches the textbook OU
+  semigroup directly, which is useful if you ever want to verify
+  Markov/positivity/stochastic properties beyond the spectrum).
+* Stages A + C′ + E from the broader
+  [`ou-mehler-discharge-plan.md`](ou-mehler-discharge-plan.md).
+
+**Read the "Route 2" section below for the full Mehler-integral plan.**
+
+### Why Route 1 is recommended
+
+The pphi2 T² continuum-limit chain (the actual downstream goal) only
+consumes the chaos-eigenvalue property. Route 1 delivers it in days
+instead of weeks. If a future consumer needs the integral formula,
+Route 2 can be done as a separate effort then — the spectral
+`ouSemigroupAct` from Route 1 doesn't preclude later refinement.
 
 ---
 
@@ -51,6 +100,248 @@ remain).
 * `MeasureTheory.integral_smul_const_left` (and friends) — integration
   through linear maps.
 * `MeasureTheory.Lp` API — `Lp.coeFn_*`, `Lp.norm_def`, `Memℓp.toLp`.
+
+---
+
+## Route 1: Spectral-shortcut implementation
+
+This is the **recommended path**. ~150-300 lines, edits only
+`GaussianHilbert/OUEigenfunctions.lean` (no new files).
+
+### Architectural idea
+
+`Lp ℝ 2 (stdGaussianFin n)` decomposes as a Hilbert sum
+`⊕_k wienerChaos n k` (already proved as `wienerChaos_isHilbertSum n`).
+Concretely this gives a linear isometric equivalence
+
+```
+chaosCoordEquiv n : Lp ℝ 2 (stdGaussianFin n) ≃ₗᵢ[ℝ]
+                    lp (fun k : ℕ => wienerChaos n k) 2
+```
+
+Define the OU semigroup as the **diagonal scaling by `e^{-kt}`** on
+this `lp` model:
+
+```
+ouSemigroupAct n t := chaosCoordEquiv⁻¹ ∘ chaosDiagCLM n t ∘ chaosCoordEquiv
+```
+
+where `chaosDiagCLM n t : lp ... →L lp ...` is the per-component
+multiplication by `chaosDecay k t = e^{-(k:ℝ)·t}` at index `k`.
+
+The chaos-eigenvalue theorem
+`ouSemigroupAct n t f = e^{-kt} • f` for `f ∈ wienerChaos n k`
+is then near-definitional: `f ∈ wienerChaos n k` corresponds to
+`chaosCoordEquiv f = lp.single 2 k ⟨f, hf⟩`, and `chaosDiagCLM`
+applied to `lp.single 2 k x` is `e^{-kt} • lp.single 2 k x` by
+construction.
+
+### Step 1: Helper definitions
+
+```lean
+/-- The chaos-coordinate isometry. -/
+noncomputable def chaosCoordEquiv (n : ℕ) :
+    Lp ℝ 2 (stdGaussianFin n) ≃ₗᵢ[ℝ] lp (fun k : ℕ => wienerChaos n k) 2 :=
+  (wienerChaos_isHilbertSum n).linearIsometryEquiv
+
+/-- The spectral decay scalar on the k-th chaos. -/
+private noncomputable def chaosDecay (k : ℕ) (t : ℝ) : ℝ :=
+  Real.exp (-(k : ℝ) * t)
+
+/-- For t ≥ 0, the decay is in [0, 1]. -/
+private lemma chaosDecay_norm_le_one (k : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    ‖chaosDecay k t‖ ≤ 1 := by
+  have hkt : 0 ≤ (k : ℝ) * t := mul_nonneg (Nat.cast_nonneg _) ht
+  have hnonneg : 0 ≤ chaosDecay k t := Real.exp_nonneg _
+  have hle : chaosDecay k t ≤ 1 := Real.exp_le_one_iff.mpr (by linarith)
+  rwa [Real.norm_eq_abs, abs_of_nonneg hnonneg]
+```
+
+### Step 2: The diagonal CLM (the technical heart — read the pitfall notes!)
+
+The objective is to define
+```lean
+chaosDiagCLM (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    lp (fun k : ℕ => wienerChaos n k) 2 →L[ℝ]
+      lp (fun k : ℕ => wienerChaos n k) 2
+```
+acting as `(chaosDiagCLM f) k = chaosDecay k t • f k`.
+
+**Pitfall 1: `Subtype.ext` over a.e. equality**
+
+`lp G 2` for `G k = wienerChaos n k` is a subtype of "all functions
+ι → α" with the `Memℓp` predicate. To define a function on it, you
+provide a function on the underlying coefficient sequence. To prove
+`map_add'` and `map_smul'`, you typically use `lp.ext` or
+`Subtype.ext` to reduce to coefficient equality — **but the underlying
+coefficients live in `wienerChaos n k`, which is itself a subtype of
+`Lp ℝ 2 (stdGaussianFin n)`, where equality is a.e.-equivalence**.
+
+This means after `ext k` you may face a goal like
+`↑↑↑(... k) =ᵐ[stdGaussianFin n] ↑↑↑(... k)`,
+not raw `=`. Codex's first attempt hit this and applied `Subtype.ext`
+incorrectly.
+
+**Recommended approach** to avoid this: use `lp.LinearMap.mkContinuous`
+**only after** working with the `(· : Lp ...)` coercions explicitly
+inside the linear-map fields. Concretely:
+
+```lean
+private lemma chaosDiag_memℓp (n : ℕ) (t : ℝ) (ht : 0 ≤ t)
+    (f : lp (fun k : ℕ => wienerChaos n k) 2) :
+    Memℓp (fun k : ℕ => chaosScale k t (f k)) 2 :=
+  -- Norm-bound + summability of ‖f k‖²:
+  -- ‖chaosScale k t (f k)‖² ≤ ‖f k‖²; sum is finite.
+  sorry  -- already worked out by codex; ~30 lines
+
+noncomputable def chaosDiagCLM (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    lp (fun k : ℕ => wienerChaos n k) 2 →L[ℝ]
+      lp (fun k : ℕ => wienerChaos n k) 2 := by
+  refine LinearMap.mkContinuous {
+    toFun := fun f => ⟨fun k => chaosScale k t (f k), chaosDiag_memℓp n t ht f⟩
+    map_add' := ?_
+    map_smul' := ?_
+  } 1 ?_
+  -- For map_add' / map_smul': use `lp.ext_apply` (or whatever the
+  -- coordinate-extensionality lemma is named in current Mathlib),
+  -- which gives a per-coordinate goal in `wienerChaos n k`, which is
+  -- a `Submodule` of `Lp` — equality there IS raw `=`, NOT `=ᵐ`.
+  -- The pitfall codex hit was using `ext k` (which goes one step too
+  -- deep into the underlying Lp coeFn). Use `lp.ext` or apply
+  -- `Subtype.ext` at the lp level, then reduce to the per-coordinate
+  -- subtype, then prove the equality there.
+  · -- map_add'
+    intros f g
+    apply lp.ext  -- target: lp coord-wise equality
+    ext k
+    -- Now goal: chaosScale k t ((f + g) k) = chaosScale k t (f k) + chaosScale k t (g k)
+    -- Both sides are elements of (wienerChaos n k); their underlying Lp
+    -- equivalence-class equality is raw `=`. Unfold chaosScale_eq_smul
+    -- and use smul_add.
+    show chaosScale k t ((f + g) k) = chaosScale k t (f k) + chaosScale k t (g k)
+    sorry  -- ~5 lines: unfold + smul_add
+  · -- map_smul' — analogous
+    sorry
+  · -- norm bound: from chaosDecay_norm_le_one + lp norm structure.
+    sorry
+```
+
+**Pitfall 2: `lp.ext` vs `ext`**
+
+In Lean 4 / Mathlib4, the right idiom for proving `(a b : lp G p), a = b`
+is to apply the lp coordinate-extensionality lemma (whatever it's
+named — search `lp.ext`, `lp.coeFn_ext`, `Lp.ext_iff_coeFn` in the
+current Mathlib). Plain `ext` may unfold too aggressively and reach
+the underlying a.e.-equivalence layer.
+
+**Pitfall 3: when the coefficient space is itself a subtype**
+
+`wienerChaos n k` is `Submodule.topologicalClosure ...`, which is a
+`Submodule ℝ (Lp ...)`. As a Lean type, it's `↥(wienerChaos n k)`.
+Its elements are `⟨f, hf⟩` pairs where `f : Lp ...` and `hf : f ∈ wienerChaos n k`.
+**Equality between two such pairs IS raw `=` (Subtype.ext on the carrier
+gives raw equality of the underlying `Lp` elements, which IS a.e.
+equality, but at the Lp level THAT is just `=` because Lp has already
+quotiented).**
+
+The chain: `lp` coords are in `wienerChaos n k` (subtype), whose
+underlying elements are in `Lp ℝ 2 (stdGaussianFin n)`. Equality at
+each level is `=` (Lp itself is the quotient, not the function space).
+
+### Step 3: chaosDiagCLM_apply_single
+
+```lean
+@[simp] lemma chaosDiagCLM_apply_single (n : ℕ) (t : ℝ) (ht : 0 ≤ t)
+    (k : ℕ) (x : wienerChaos n k) :
+    chaosDiagCLM n t ht (lp.single 2 k x) =
+      chaosDecay k t • lp.single 2 k x := by
+  apply lp.ext  -- coord-wise equality
+  intro j
+  by_cases h : j = k
+  · subst h
+    -- (lp.single 2 k x) k = x; chaosScale k t x = chaosDecay k t • x
+    -- (chaosDecay • lp.single 2 k x) k = chaosDecay k t • x
+    -- Both sides equal (chaosDecay k t) • x in wienerChaos n k.
+    sorry  -- ~5 lines via lp.single_apply + chaosScale_eq_smul + smul_apply
+  · -- (lp.single 2 k x) j = 0 for j ≠ k. Both sides 0.
+    sorry  -- ~5 lines
+```
+
+### Step 4: ouSemigroupAct definition + chaos-eigenvalue theorem
+
+```lean
+noncomputable def ouSemigroupAct (n : ℕ) (t : ℝ) :
+    Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n) :=
+  if ht : 0 ≤ t then
+    let e := (chaosCoordEquiv n).toContinuousLinearEquiv
+    e.symm.toContinuousLinearMap.comp
+      ((chaosDiagCLM n t ht).comp e.toContinuousLinearMap)
+  else 0
+
+theorem ouSemigroupAct_eq_smul_of_mem_wienerChaos {n : ℕ} (k : ℕ)
+    (t : ℝ) (ht : 0 ≤ t)
+    (f : Lp ℝ 2 (stdGaussianFin n)) (hf : f ∈ wienerChaos n k) :
+    ouSemigroupAct n t f = Real.exp (-(k : ℝ) * t) • f := by
+  -- The proof: e f = lp.single 2 k ⟨f, hf⟩ via
+  -- `IsHilbertSum.linearIsometryEquiv_symm_apply_single`. Apply
+  -- chaosDiagCLM_apply_single. e.symm sends the result back.
+  sorry  -- ~15 lines, see Pitfall 4 below
+```
+
+**Pitfall 4: `set_option maxHeartbeats` placement**
+
+The `set_option ... in <theorem>` form must be:
+```lean
+set_option maxHeartbeats 1600000 in
+theorem foo ... := by ...
+```
+*as its own line directly above the theorem*, not embedded inside a
+docstring or after `**Reference:**`. Codex's first attempt put it
+inside the trailing docstring text, causing a parse error.
+
+**Pitfall 5: `simpa` lint and `dif_pos` unfolding**
+
+In the calc proof of `ouSemigroupAct_eq_smul_of_mem_wienerChaos`, the
+step `simp [ouSemigroupAct, ht, e]` is heavy because it unfolds the
+`if dif_pos h then ... else 0`. Prefer an explicit `show` + `dif_pos`
+rewrite over `simp` here:
+
+```lean
+calc
+  e (ouSemigroupAct n t f)
+      = chaosDiagCLM n t ht (e f) := by
+          show e ((if ht' : 0 ≤ t then ... else 0) f) = chaosDiagCLM n t ht (e f)
+          rw [dif_pos ht]
+          rfl  -- after definitional unfolding
+  ...
+```
+
+### Step 5: replace the axioms
+
+In `GaussianHilbert/OUEigenfunctions.lean` lines ~485-512:
+1. Replace `axiom ouSemigroupAct ...` with `noncomputable def ouSemigroupAct ...` (Step 4 above).
+2. Replace `axiom ouSemigroupAct_eq_smul_of_mem_wienerChaos ...` with the corresponding `theorem ... := by ...` (Step 4).
+
+### Acceptance criteria for Route 1
+
+* `lake build GaussianHilbert.OUEigenfunctions` succeeds — **must be
+  verified before reporting**, not assumed.
+* `lake build` (full repo) succeeds.
+* `grep -nE '^axiom ouSemigroupAct\b|^axiom ouSemigroupAct_eq_smul'
+    GaussianHilbert/OUEigenfunctions.lean` returns nothing.
+* The third axiom `ouSemigroupAct_eLpNorm_hypercontractive` continues
+  to be an axiom (out of scope).
+* `AXIOM_AUDIT.md` (top-level): move the two rows from "Active" to
+  "Recently discharged".
+
+---
+
+# Route 2: Mehler-integral implementation (fallback)
+
+Original plan, kept for the case where Route 1 hits a Mathlib API
+blocker that the spectral approach can't avoid. Stages A + C′ + E from
+the broader `ou-mehler-discharge-plan.md`. **Skip this section unless
+Route 1 fails.**
 
 ---
 
