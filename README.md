@@ -95,5 +95,9 @@ import `gaussian-hilbert`.
 
 ## Status
 
-Repository skeleton + initial seed planned. See [`TODO.md`](TODO.md)
-for further development directions motivated by Janson's textbook.
+5 library files (~1,950 lines), **0 sorries, 4 axioms** (1 analytic
+foundation + 3 OU placeholders). `lake build` clean. Snapshot:
+[`STATUS.md`](STATUS.md). Per-axiom vetting verdicts and discharge
+plans: [`docs/AXIOM_AUDIT.md`](docs/AXIOM_AUDIT.md). Forward-looking
+development directions motivated by Janson's textbook chapters:
+[`TODO.md`](TODO.md).
