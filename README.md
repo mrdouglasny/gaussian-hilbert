@@ -87,7 +87,7 @@ gaussian-field  markov-semigroups
 
 `gaussian-field` provides the foundational Gaussian-measure
 infrastructure (Wick algebra, characteristic functional, Schwartz
-nuclear structure, the polynomial L²-density axiom).
+nuclear structure).
 `markov-semigroups` provides the abstract Bakry-Émery / Dirichlet-form
 framework and Gross's LSI ↔ hypercontractivity duality. `gaussian-hilbert`
 consumes both: the chaos algebra is built on gaussian-field's Wick

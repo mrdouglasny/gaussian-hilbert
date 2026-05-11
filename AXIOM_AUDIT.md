@@ -1,6 +1,6 @@
 # Axiom audit — gaussian-hilbert
 
-*Last updated 2026-05-10.*
+*Last updated 2026-05-11.*
 
 ## Purpose
 
@@ -61,31 +61,20 @@ rests on this 1 remaining local axiom plus Lean built-ins
 
 ## Audit table
 
-### Analytic foundation
-
-`polynomial_dense_L2_of_subGaussian` is now **proved** at
-[`GaussianHilbert/PolynomialDensity.lean:605`](../GaussianHilbert/PolynomialDensity.lean#L605).
-The proof uses an orthogonal-complement / moment-determinacy argument:
-an `L²` witness orthogonal to all polynomial evaluations defines equal
-positive and negative `withDensity` measures, equality of all pushforward
-complex MGFs along continuous linear functionals forces those measures to
-coincide, and hence the witness vanishes. The supporting predicate
-`IsSubGaussianMeasure` remains a `def`, and
-`isSubGaussianMeasure_pi_gaussianReal` is fully **proved** as before.
-
 ### Previously axiomatized but now proved
 
-These two former OU placeholders were discharged on 2026-05-10 by a
-spectral construction using `wienerChaos_isHilbertSum`: `ouSemigroupAct`
-is now defined by diagonal decay on chaos coordinates, and
-`ouSemigroupAct_eq_smul_of_mem_wienerChaos` is proved from that
-definition. This is mathematically equivalent to the Mehler operator on
-`L²(γ_n)`, but the pointwise Mehler identification is still deferred.
-
-| Former axiom | File:Line | Reference | Discharge status | Notes | Consumers |
+| Former axiom | File:Line | Discharged | Reference | Discharge route | Consumers |
 |---|---|---|---|---|---|
-| `ouSemigroupAct` | [`GaussianHilbert/OUEigenfunctions.lean:657`](../GaussianHilbert/OUEigenfunctions.lean#L657) | BGL §2.7.4 (OU semigroup definition) | **Proved** | Defined spectrally as the continuous diagonal map `f_k ↦ e^{-kt} f_k` on the `ℓ²` sum of Wiener-chaos coordinates, transported back along `wienerChaos_isHilbertSum`. This is sufficient for all existing chaos-eigenvalue consumers. | `ouSemigroupAct_eq_smul_of_mem_wienerChaos`, `ouSemigroupAct_eLpNorm_hypercontractive`, `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` |
-| `ouSemigroupAct_eq_smul_of_mem_wienerChaos` | [`GaussianHilbert/OUEigenfunctions.lean:680`](../GaussianHilbert/OUEigenfunctions.lean#L680) | BGL §2.7.4 (OU eigenvalues on chaos: `T_t H_k = e^{-kt} H_k`); Janson §3.4; Nualart §1.4 | **Proved** | Reduced to the single-coordinate computation for the spectral diagonal operator under the chaos-coordinate equivalence. | `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration` |
+| `polynomial_dense_L2_of_subGaussian` | [`GaussianHilbert/PolynomialDensity.lean:605`](GaussianHilbert/PolynomialDensity.lean#L605) | 2026-05-11 | Janson, *Gaussian Hilbert Spaces*, Theorem 2.6; Carleman moment determinacy | L²-orthogonal-complement / moment-determinacy: an `L²` witness orthogonal to all polynomial evaluations defines equal positive and negative `withDensity` measures; equality of pushforward complex MGFs along continuous linear functionals forces those measures to coincide; sub-Gaussian moment determinacy forces the MGFs to agree, so the witness vanishes. ~590 lines. | `hermiteMulti_dense`, `wienerChaos_isHilbertSum`, `chaosCoordEquiv`, and transitively the entire chaos-spectral chain. |
+| `ouSemigroupAct` | [`GaussianHilbert/OUEigenfunctions.lean:657`](GaussianHilbert/OUEigenfunctions.lean#L657) | 2026-05-10 | BGL §2.7.4 (OU semigroup definition) | Spectral construction: defined as the continuous diagonal map `f_k ↦ e^{-kt} f_k` on the `ℓ²` sum of Wiener-chaos coordinates, transported back along `wienerChaos_isHilbertSum`. Mathematically equivalent to the Mehler operator on `L²(γ_n)` (Gemini-vetted), though the pointwise Mehler identification is deferred. | `ouSemigroupAct_eq_smul_of_mem_wienerChaos`, `ouSemigroupAct_eLpNorm_hypercontractive`, `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration`. |
+| `ouSemigroupAct_eq_smul_of_mem_wienerChaos` | [`GaussianHilbert/OUEigenfunctions.lean:680`](GaussianHilbert/OUEigenfunctions.lean#L680) | 2026-05-10 | BGL §2.7.4; Janson §3.4; Nualart §1.4 | Single-coordinate computation for the spectral diagonal operator under the chaos-coordinate equivalence, via `IsHilbertSum.linearIsometryEquiv_symm_apply_single`. | `bonami_nelson_chaos`, `bonami_nelson_chaosLE`, `polynomial_chaos_concentration`. |
+
+All three discharged theorems verify clean via `#print axioms` —
+their axiom dependency closures contain only `propext`,
+`Classical.choice`, `Quot.sound`. The chaos infrastructure
+(`hermiteMulti_dense → wienerChaos_isHilbertSum → chaosCoordEquiv → ouSemigroupAct`)
+is end-to-end axiom-free; only the load-bearing hypercontractivity
+remains.
 
 ### Remaining OU placeholder
 
