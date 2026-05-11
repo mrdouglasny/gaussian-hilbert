@@ -34,7 +34,7 @@ content.
 
 ## Initial contents
 
-Four library files and one shared foundational axiom:
+Five library files with one remaining placeholder axiom:
 
 | File | Source | Content |
 |---|---|---|
@@ -42,7 +42,7 @@ Four library files and one shared foundational axiom:
 | `GaussianHilbert/WienerChaos.lean` | imported from `markov-semigroups/MarkovSemigroups/Gaussian/` | The `k`-th Wiener chaos `wienerChaos n k` as a closed L² submodule, orthogonal projection `chaosProjection n k`, distinct-chaos orthogonality, full chaos decomposition `wienerChaos_isHilbertSum : IsHilbertSum ℝ (wienerChaos n) ...` (proved from `hermiteMulti_dense`). |
 | `GaussianHilbert/OUEigenfunctions.lean` | imported from `markov-semigroups/MarkovSemigroups/Gaussian/` | The Ornstein-Uhlenbeck generator `L = Δ - x·∇`, the eigenfunction theorem `ouGenerator_hermiteMultiEval : L H_α = -|α| H_α`, and a proved spectral OU semigroup `ouSemigroupAct` acting by `e^{-kt}` on the `k`-th Wiener chaos. One placeholder axiom remains: `ouSemigroupAct_eLpNorm_hypercontractive`. |
 | `GaussianHilbert/PolynomialChaosConcentration.lean` | imported from `markov-semigroups/MarkovSemigroups/Gaussian/` | Bonami-Beckner-Nelson hypercontractive bound `‖f‖_{L^p} ≤ (p-1)^{k/2} ‖f‖_{L²}` on the `k`-th chaos, the analogous bound on `⊕_{k ≤ d} H_k`, and **Janson Theorem 5.10** polynomial-chaos concentration `ℙ(|F| > λ ‖F‖_{L²}) ≤ 2 exp(-c_d λ^{2/d})`. |
-| `GaussianHilbert/PolynomialDensity.lean` | imported from `gaussian-field/GeneralResults/PolynomialDensityGaussian.lean` | The textbook density axiom `polynomial_dense_L2_of_subGaussian` (Janson Thm 2.6) plus the proved instance `isSubGaussianMeasure_pi_gaussianReal` (transported from Mathlib's Fernique theorem). |
+| `GaussianHilbert/PolynomialDensity.lean` | imported from `gaussian-field/GeneralResults/PolynomialDensityGaussian.lean` | A proved `L²` polynomial-density theorem `polynomial_dense_L2_of_subGaussian` for sub-Gaussian measures on `Fin n → ℝ`, plus the proved instance `isSubGaussianMeasure_pi_gaussianReal` (transported from Mathlib's Fernique theorem). |
 
 All five library files are sorry-free. One OU-action
 placeholder axiom remains in `OUEigenfunctions.lean`; a discharge plan
@@ -106,8 +106,8 @@ import `gaussian-hilbert`.
 
 ## Status
 
-5 library files (~2,410 lines), **0 sorries, 2 axioms** (1 analytic
-foundation + 1 OU placeholder). `lake build` clean. Snapshot:
+5 library files (~2,410 lines), **0 sorries, 1 axiom** (the OU
+hypercontractive placeholder). `lake build` clean. Snapshot:
 [`STATUS.md`](STATUS.md). Per-axiom vetting verdicts and discharge
 plans: [`AXIOM_AUDIT.md`](AXIOM_AUDIT.md). Forward-looking
 development directions motivated by Janson's textbook chapters:

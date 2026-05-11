@@ -50,29 +50,28 @@ plan, and downstream consumers.*
 
 ## Summary
 
-**2 axioms total** (`grep ^axiom` on `GaussianHilbert/`):
-- 1 in `GaussianHilbert/PolynomialDensity.lean` — analytic axiom feeding the algebraic discharge of `hermiteMulti_dense`
+**1 axiom total** (`grep ^axiom` on `GaussianHilbert/`):
 - 1 in `GaussianHilbert/OUEigenfunctions.lean` — the remaining OU hypercontractive placeholder
 
 The polynomial-chaos pipeline (proved theorems `hermiteMulti_dense`,
 `wienerChaos_isHilbertSum`, `bonami_nelson_chaos`,
-`bonami_nelson_chaosLE`, `polynomial_chaos_concentration`) transitively
-rests on these 2 + Lean built-ins (`propext`, `Classical.choice`,
-`Quot.sound`).
+`bonami_nelson_chaosLE`, `polynomial_chaos_concentration`) now
+rests on this 1 remaining local axiom plus Lean built-ins
+(`propext`, `Classical.choice`, `Quot.sound`).
 
 ## Audit table
 
 ### Analytic foundation
 
-| Axiom | File:Line | Reference | Rating | Vetting | Strategy / Plan | Consumers |
-|---|---|---|---|---|---|---|
-| `polynomial_dense_L2_of_subGaussian` | [`GaussianHilbert/PolynomialDensity.lean:90`](../GaussianHilbert/PolynomialDensity.lean#L90) | S. Janson, *Gaussian Hilbert Spaces*, Cambridge (1997), Theorem 2.6; D. Nualart, *Malliavin Calculus* §1.1.1; C. Berg, *Multidimensional moment problem*, LNM 1210 (1986) | **Standard** | DT-2.5 (2026-05-09; verdict and detailed entry recorded in [`pphi2/docs/gaussian-field-axiom-vet-2026-05-09.md`](https://github.com/mrdouglasny/pphi2/blob/main/docs/gaussian-field-axiom-vet-2026-05-09.md)) | Multivariate polynomials are dense in `L²(μ)` for any sub-Gaussian probability measure on `Fin n → ℝ`. Textbook proof: (1) `Cc(ℝⁿ)` dense in `L²(μ)` (Mathlib has it); (2) Stone-Weierstrass on each ball; (3) sub-Gaussian tail controls polynomial L²-mass on tail. Lean discharge: ~250 lines, ~4-7 days; the analytic content is the tail-control step. **The DT-2.5 verdict noted that the hypothesis is tight: weaker (e.g. second moment alone) doesn't suffice — Stieltjes-style indeterminate counterexamples exist.** | `hermiteMulti_dense` (proved theorem, `HermitePolynomials.lean`, via `Submodule.span` change-of-basis between multivariate monomials and multivariate Hermite polynomials); transitively `wienerChaos_isHilbertSum` (`WienerChaos.lean`). Not used by the chaos-concentration consumers (which depend only on the OU placeholders below). |
-
-The `IsSubGaussianMeasure` predicate in the same file is a `def` (not an
-axiom), and the lemma `isSubGaussianMeasure_pi_gaussianReal` is fully
-**proved** (transports Mathlib's `IsGaussian.exists_integrable_exp_sq`
-through the `WithLp.toLp 2` measurable equivalence; depends only on
-Lean built-ins).
+`polynomial_dense_L2_of_subGaussian` is now **proved** at
+[`GaussianHilbert/PolynomialDensity.lean:605`](../GaussianHilbert/PolynomialDensity.lean#L605).
+The proof uses an orthogonal-complement / moment-determinacy argument:
+an `L²` witness orthogonal to all polynomial evaluations defines equal
+positive and negative `withDensity` measures, equality of all pushforward
+complex MGFs along continuous linear functionals forces those measures to
+coincide, and hence the witness vanishes. The supporting predicate
+`IsSubGaussianMeasure` remains a `def`, and
+`isSubGaussianMeasure_pi_gaussianReal` is fully **proved** as before.
 
 ### Previously axiomatized but now proved
 
