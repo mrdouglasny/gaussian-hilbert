@@ -1,5 +1,27 @@
 # OU / Mehler-kernel discharge plan
 
+> ## ⚠ STATUS: PARTIALLY SUPERSEDED 2026-05-10
+>
+> This broader 5-stage plan was the original blueprint for discharging
+> all three OU placeholder axioms via the Mehler integral. As of
+> 2026-05-10, the *first two* placeholders (`ouSemigroupAct` and
+> `ouSemigroupAct_eq_smul_of_mem_wienerChaos`) have been discharged
+> by a **spectral shortcut** that sidesteps the Mehler integral
+> entirely — see [`ou-discharge-codex-plan.md`](ou-discharge-codex-plan.md)
+> Route 1.
+>
+> **Stages B and C′ of this plan are now obsolete**: they were aimed
+> at the OU pair via the Mehler route, which is no longer needed.
+>
+> **Stages A, C/C-β, and E are still relevant** for the third
+> placeholder `ouSemigroupAct_eLpNorm_hypercontractive`, which is the
+> only remaining gaussian-hilbert axiom. See the focused
+> [`hypercontractivity-discharge-plan.md`](hypercontractivity-discharge-plan.md)
+> for the current path forward.
+>
+> This doc is kept for historical context and for Stage C / C-β
+> details that the focused plan summarises but doesn't fully duplicate.
+
 *Drafted 2026-05-09. Plan for discharging the three placeholder axioms in
 `GaussianHilbert/OUEigenfunctions.lean` (`ouSemigroupAct`,
 `ouSemigroupAct_eq_smul_of_mem_wienerChaos`,

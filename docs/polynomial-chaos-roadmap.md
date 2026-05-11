@@ -21,7 +21,29 @@ $\|F\|_{L^p} \le (p-1)^{d/2} \|F\|_{L^2}$ for $p \ge 2$.
 The downstream consumer is `pphi2`'s Cluster A (4 axioms reducing to the
 Glimm-Jaffe Ch. 8 dynamical-cutoff Nelson estimate).
 
-## Status (2026-05-09)
+## Status (2026-05-11)
+
+**Effectively done.** The chaos pipeline now rests on **one** placeholder
+axiom — `ouSemigroupAct_eLpNorm_hypercontractive` (Bonami-Beckner-Nelson
+hypercontractive bound). All four target files exist and are sorry-free.
+
+The other axioms originally in this roadmap have been discharged:
+
+- `polynomial_dense_L2_of_subGaussian` — discharged 2026-05-11 via the
+  L²-orthogonal-complement / Carleman moment-determinacy route. See
+  [`polynomial-density-codex-plan.md`](polynomial-density-codex-plan.md).
+- `ouSemigroupAct` — discharged 2026-05-10 via the spectral shortcut on
+  `wienerChaos_isHilbertSum`. See
+  [`ou-discharge-codex-plan.md`](ou-discharge-codex-plan.md) Route 1.
+- `ouSemigroupAct_eq_smul_of_mem_wienerChaos` — discharged 2026-05-10
+  in the same construction.
+
+For the remaining axiom, see the focused
+[`hypercontractivity-discharge-plan.md`](hypercontractivity-discharge-plan.md).
+
+---
+
+### Original status note (2026-05-09)
 
 **Effectively done in three weeks of wall-clock**, but the OU semigroup
 action on chaos pieces still rests on 3 placeholder axioms (the underlying

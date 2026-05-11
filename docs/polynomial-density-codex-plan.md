@@ -1,5 +1,31 @@
 # Codex hand-off plan: discharge `polynomial_dense_L2_of_subGaussian`
 
+> ## ✅ STATUS: COMPLETED 2026-05-11
+>
+> `polynomial_dense_L2_of_subGaussian` is now a proved theorem at
+> [`GaussianHilbert/PolynomialDensity.lean:605`](../GaussianHilbert/PolynomialDensity.lean#L605).
+> ([Commit `265b30e`](https://github.com/mrdouglasny/gaussian-hilbert/commit/265b30e).)
+>
+> Codex used a **different route** than the 3-milestone Cc-density +
+> Stone-Weierstrass + sub-Gaussian-tail plan below: an
+> L²-orthogonal-complement / Carleman moment-determinacy argument.
+> An L² witness orthogonal to all polynomial evaluations defines equal
+> positive and negative `withDensity` measures; equality of pushforward
+> complex MGFs along continuous linear functionals (sub-Gaussianity
+> giving moment determinacy) forces those measures to coincide, so the
+> witness vanishes. ~590 lines.
+>
+> `#print axioms GaussianHilbert.polynomial_dense_L2_of_subGaussian`
+> yields `[propext, Classical.choice, Quot.sound]`. All four downstream
+> consumers (`hermiteMulti_dense`, `wienerChaos_isHilbertSum`,
+> `chaosCoordEquiv`, `ouSemigroupAct_eq_smul_of_mem_wienerChaos`) also
+> verify clean.
+>
+> The 3-milestone plan below is retained as historical reference;
+> the anti-delegation guards in particular caught the
+> 2026-05-10 false-discharge attempt and were essential to producing
+> the genuine discharge on 2026-05-11.
+
 **Target axiom**: `polynomial_dense_L2_of_subGaussian` in
 `GaussianHilbert/PolynomialDensity.lean:96`.
 

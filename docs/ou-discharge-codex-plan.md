@@ -1,5 +1,26 @@
 # Codex hand-off plan: discharge OU axioms
 
+> ## ✅ STATUS: COMPLETED 2026-05-10 via Route 1 (spectral shortcut)
+>
+> Both target axioms in this plan are now proved theorems:
+> - `ouSemigroupAct` — defined as the spectral diagonal on the
+>   `wienerChaos_isHilbertSum` decomposition. ([Commit `e6235e9`](https://github.com/mrdouglasny/gaussian-hilbert/commit/e6235e9).)
+> - `ouSemigroupAct_eq_smul_of_mem_wienerChaos` — chaos-eigenvalue
+>   identity, proved by reduction to `chaosDiagCLM_apply_single` via
+>   `IsHilbertSum.linearIsometryEquiv_symm_apply_single`.
+>
+> `#print axioms` for both yields `[propext, Classical.choice, Quot.sound]`
+> (verified 2026-05-11 after the polynomial-density discharge).
+>
+> Route 2 (Mehler integral, original §"Route 2: Mehler-integral
+> implementation" below) is still **relevant** because the remaining
+> `ouSemigroupAct_eLpNorm_hypercontractive` axiom requires the Mehler
+> integral to discharge natively (per Gemini's 2026-05-10 vet — pointwise
+> positivity / Dirichlet-form integration-by-parts cannot be derived from
+> the spectral form alone). See the focused
+> [`hypercontractivity-discharge-plan.md`](hypercontractivity-discharge-plan.md)
+> for the current path, which folds Route 2 Stage A into a smaller scope.
+
 **Target axioms** (all in `GaussianHilbert/OUEigenfunctions.lean`):
 
 1. `ouSemigroupAct` (line 490) — opaque CLM declaration.
