@@ -1,6 +1,7 @@
 # Discharge plan: `ouSemigroupAct_eLpNorm_hypercontractive`
 
-*Created 2026-05-11.*
+*Created 2026-05-11. Significantly revised 2026-05-11 after
+discovering that Stage A is already complete.*
 
 **Target axiom**: `ouSemigroupAct_eLpNorm_hypercontractive` in
 [`GaussianHilbert/OUEigenfunctions.lean:724`](../GaussianHilbert/OUEigenfunctions.lean#L724).
@@ -23,8 +24,38 @@ constructed and identified with the existing spectral `ouSemigroupAct`,
 then hypercontractivity follows from Bakry-Émery curvature 1 + LSI(1)
 + Gross's LSI ⇔ HC duality.
 
-**Estimate**: ~2.5-3.5 weeks (recommended route) or ~3.5-4.5 weeks
-(no-new-axioms route). See route trade-off below.
+> ## 🟢 MAJOR LEVERAGE: Stage A is already done
+>
+> An end-of-session audit on 2026-05-11 revealed that codex, while
+> implementing the OU spectral discharge on 2026-05-10, *already
+> built the entire Mehler-integral L²-CLM scaffold* in
+> [`GaussianHilbert/OUEigenfunctions.lean`](../GaussianHilbert/OUEigenfunctions.lean)
+> (lines 528-1233, ~700 lines). The following are all proved, with
+> `#print axioms` showing only `[propext, Classical.choice, Quot.sound]`:
+>
+> | Decl | Line | What it is |
+> |---|---|---|
+> | `ouAffine`, `mehlerFun`, `mehlerFun_measurable` | 528-556 | Function-level Mehler operator |
+> | `stdGaussianFin_prod_map_ouAffine` | 627 | Measure-preservation (the load-bearing Gaussian fact) |
+> | `mehlerFun_integral_sq_le`, `mehlerFun_memLp` | 769, 806 | L²-contraction via Jensen |
+> | `mehlerLM`, `mehlerLM_norm_le` | 919, 994 | LinearMap intermediate |
+> | **`mehlerOp`** | **1018** | **The L²-CLM (Stage A target)** |
+> | `mehler_hermiteEval_1d` | 1082 | 1D Mehler-Hermite identity |
+> | `mehlerOp_hermiteMultiLp` | 1182 | n-D Mehler-Hermite identity |
+> | **`mehlerOp_eq_smul_of_mem_wienerChaos`** | **1211** | **Mehler eigenvalue on chaos (Stage Ag pre-req)** |
+>
+> This collapses the discharge cost dramatically:
+> * **Stage A**: DONE.
+> * **Stage Ag**: now near-trivial (both `mehlerOp` and `ouSemigroupAct`
+>   satisfy the same eigenvalue equation on every Wiener chaos; by
+>   `wienerChaos_isHilbertSum` density + `ContinuousLinearMap.ext_on`,
+>   they're equal). **~30-60 lines, ~1 day.**
+> * **Stages W/N and E**: unchanged.
+>
+> The revised totals are in the "Total effort" section below.
+
+**Estimate**: **~1.5-2 weeks** (recommended Route W) or **~2.5-3 weeks**
+(no-new-axioms Route N). See route trade-off below.
 
 ---
 
@@ -82,31 +113,41 @@ then hypercontractivity follows from Bakry-Émery curvature 1 + LSI(1)
 
 ### Stage A — Mehler operator on `L²(γ_n)`
 
-**Goal**: construct `mehlerOp n t : Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n)`
-as the L²-CLM lifting of the Mehler integral
+**Status**: ✅ **DONE.** The Mehler operator
+`mehlerOp n t ht : Lp ℝ 2 (stdGaussianFin n) →L[ℝ] Lp ℝ 2 (stdGaussianFin n)`
+is defined at `GaussianHilbert/OUEigenfunctions.lean:1018` as the
+L²-CLM lifting of the Mehler integral
 `(M_t f)(x) = ∫ f(e^{-t}·x + √(1 − e^{-2t})·y) dγ_n(y)`.
 
-**Already documented in detail** in
-[`ou-discharge-codex-plan.md`](ou-discharge-codex-plan.md) Route 2 →
-"Stage A: Mehler operator". The plan there has:
+Codex built this during the 2026-05-10 OU spectral discharge work
+(commit `e6235e9` and follow-ups) but didn't surface it in the
+prior version of this plan. Verified with `#print axioms`: only
+`[propext, Classical.choice, Quot.sound]`.
 
-- `mehlerFun` (function-level).
-- `mehlerFun_measurable`.
-- `stdGaussianFin_mehler_pushforward` — measure-preservation of
-  `(x, y) ↦ e^{-t}x + √(1−e^{-2t})y` (load-bearing fact).
-- `mehlerFun_integral_sq_le` — L²-contraction via Jensen.
-- `mehlerFun_memLp`.
-- `mehlerOp` — Lp CLM via direct quotient lifting (Gemini-vetted
-  alternative to `LinearMap.extend`).
+Components built:
 
-**Effort**: ~250 lines, ~5-7 days.
+- `ouAffine`, `mehlerFun`, `mehlerFun_measurable` (lines 528-556).
+- `stdGaussianFin_prod_map_ouAffine` (line 627) — the measure-preservation
+  Gaussian fact `(x, y) ↦ e^{-t}x + √(1−e^{-2t})y` pushforward.
+- `mehlerFun_integral_sq_le`, `mehlerFun_memLp` (lines 769, 806) —
+  L²-contraction via Jensen.
+- `mehlerLM`, `mehlerLM_norm_le` (lines 919, 994) — LinearMap intermediate.
+- **`mehlerOp` (line 1018)** — the Lp CLM.
 
-**Codex-readiness**: the plan exists with concrete signatures, Mathlib
-API hints (`Equiv.arrowProdEquivProdArrow` for the n-D pi-rearrange,
-`MemLp.toLp` + `LinearMap.mkContinuous` for the Lp lift), and the
-"Pitfall N" sections from the earlier OU plan.
+Also built (a head start on Stage Ag):
+
+- `mehler_hermiteEval_1d` (line 1082) — 1D Mehler-Hermite identity
+  `∫ He_k(e^{-t}·x + √(1−e^{-2t})·y) dγ(y) = e^{-kt} · He_k(x)`.
+- `mehlerOp_hermiteMultiLp` (line 1182) — multivariate version via
+  Fubini.
+- **`mehlerOp_eq_smul_of_mem_wienerChaos` (line 1211)** — Mehler's
+  chaos-eigenvalue equation, proved via `ContinuousLinearMap.ext_on`
+  on the dense span. **Eigenvalue identity for `mehlerOp` is DONE.**
 
 ### Stage Ag — Agreement theorem: `mehlerOp = ouSemigroupAct`
+
+**Status**: pre-requisites already in place; the discharge is now a
+near-one-liner.
 
 **Goal**: prove the operator-level identity
 
@@ -115,25 +156,29 @@ theorem mehlerOp_eq_ouSemigroupAct (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
     mehlerOp n t ht = ouSemigroupAct n t
 ```
 
-**Proof outline**: both operators act as `e^{-kt}` on the k-th Wiener
-chaos:
-- For `mehlerOp`: by the Mehler-Hermite identity
-  `M_t(H_α) = e^{-|α|t} · H_α` (1D version: Janson §3.4 (3.5); multi-D
-  via Fubini). The simplest 1D proof: **induction + Stein's lemma**
-  (as recommended by Gemini in the OU plan; avoids generating-function
-  DCT).
-- For `ouSemigroupAct`: by construction (this is the chaos-eigenvalue
-  theorem `ouSemigroupAct_eq_smul_of_mem_wienerChaos` already proved).
+**Proof outline** (now ~30-60 lines because both eigenvalue identities
+are proved):
 
-Both operators are bounded continuous CLMs on `L²(γ_n)` agreeing on
-the algebraic direct sum `⊕_k wienerChaos n k`, which is dense
-(`wienerChaos_isHilbertSum`). By continuity + density, they're equal.
+Both operators are bounded continuous CLMs on `L²(γ_n)` that satisfy
+the same eigenvalue equation on every Wiener chaos:
 
-**Effort**: ~150-250 lines, ~3-5 days. The bulk is the 1D
-Mehler-Hermite identity (induction + Stein) and the n-D Fubini lift.
+- `mehlerOp_eq_smul_of_mem_wienerChaos` (already proved): for
+  `f ∈ wienerChaos n k`, `mehlerOp n t ht f = e^{-kt} • f`.
+- `ouSemigroupAct_eq_smul_of_mem_wienerChaos` (already proved):
+  same equation for `ouSemigroupAct`.
 
-**Mathlib API**: `ContinuousLinearMap.eqOn_closure` (or `ext_on`) for
-the agreement-on-closure step.
+By `wienerChaos_isHilbertSum n`, the algebraic direct sum
+`⊕_k wienerChaos n k` is dense in `Lp ℝ 2 (stdGaussianFin n)`. Two
+continuous linear maps agreeing on a dense set are equal — apply
+`ContinuousLinearMap.ext_on` (or the appropriate
+`Submodule.topologicalClosure_minimal` variant).
+
+**Effort**: ~30-60 lines, ~1 day. (Was ~150-250 lines / 3-5 days in
+the original plan, before discovering that the 1D Mehler-Hermite
+identity and its multivariate extension were already proved.)
+
+**Mathlib API**: `ContinuousLinearMap.ext_on` /
+`Submodule.topologicalClosure_minimal` for the agreement step.
 
 ### Stage W (recommended) — LSI tensorization shortcut
 
@@ -224,16 +269,22 @@ the concrete `ouSemigroupAct`-based statement. Typically a small
 
 ---
 
-## Total effort
+## Total effort (revised 2026-05-11 after the Mehler-already-built discovery)
 
-| Stage | Lines | Days | New axioms |
-|---|---|---|---|
-| A — Mehler operator | ~250 | 5-7 | 0 |
-| Ag — Agreement theorem | ~200 | 3-5 | 0 |
-| W — LSI tensorization shortcut | ~250 | 5-7 | **+1 in markov-semigroups** |
-| E — wire-in | ~50 | 1-2 | 0 |
-| **Route W total** | **~750** | **~2.5-3.5 weeks** | **+1** |
-| N — full BE instance (instead of W) | ~600 | 10-14 | 0 |
+| Stage | Status | Remaining lines | Remaining days | New axioms |
+|---|---|---|---|---|
+| A — Mehler operator | ✅ **DONE** (~700 lines already in OUEigenfunctions.lean) | 0 | 0 | 0 |
+| Ag — Agreement theorem | pre-reqs done; one-liner extension | ~30-60 | ~1 | 0 |
+| W — LSI tensorization shortcut | not started | ~250 | 5-7 | **+1 in markov-semigroups** |
+| E — wire-in | not started | ~50 | 1-2 | 0 |
+| **Route W total** | | **~350** | **~1.5-2 weeks** | **+1** |
+| N — full BE instance (instead of W) | not started | ~600 | 10-14 | 0 |
+| **Route N total** | | **~700** | **~2.5-3 weeks** | **0** |
+
+For reference, the **previous estimate** (before discovering Stage A
+was already done): ~750 lines / 2.5-3.5 weeks (Route W) and ~1100 lines /
+3.5-4.5 weeks (Route N). Codex's already-built Mehler scaffolding from
+the 2026-05-10 OU discharge saved approximately one week of work.
 | **Route N total** | **~1100** | **~3.5-4.5 weeks** | **0** |
 
 ---
