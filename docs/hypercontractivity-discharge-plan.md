@@ -144,41 +144,32 @@ Also built (a head start on Stage Ag):
   chaos-eigenvalue equation, proved via `ContinuousLinearMap.ext_on`
   on the dense span. **Eigenvalue identity for `mehlerOp` is DONE.**
 
-### Stage Ag — Agreement theorem: `mehlerOp = ouSemigroupAct`
+### Stage Ag — Agreement theorem: `mehlerOp = ouSemigroupAct` ✓ DONE
 
-**Status**: pre-requisites already in place; the discharge is now a
-near-one-liner.
+**Status**: discharged 2026-05-11. Theorem
+`mehlerOp_eq_ouSemigroupAct` lives in
+`GaussianHilbert/OUEigenfunctions.lean` (after
+`ouSemigroupAct_eq_smul_of_mem_wienerChaos`), proved with only the
+standard Mathlib axioms.
 
-**Goal**: prove the operator-level identity
+**Proof** (~70 lines): set
+`A := coord ∘ mehlerOp − chaosDiagCLM ∘ coord` and show `A = 0`.
+For each Wiener chaos `f ∈ wienerChaos n k`, both
+`mehlerOp_eq_smul_of_mem_wienerChaos` and
+`chaosDiagCLM_apply_single` collapse `A f` to `0`; hence
+`wienerChaos n k ≤ A.ker` for every `k`. The closed kernel `A.ker` then
+contains `(⨆ k, wienerChaos n k).topologicalClosure = ⊤` (totality
+witness, see below), so `A = 0`. Reading off
+`coord ∘ mehlerOp = chaosDiagCLM ∘ coord` and applying
+`coord.symm` gives the operator identity.
 
-```lean
-theorem mehlerOp_eq_ouSemigroupAct (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
-    mehlerOp n t ht = ouSemigroupAct n t
-```
-
-**Proof outline** (now ~30-60 lines because both eigenvalue identities
-are proved):
-
-Both operators are bounded continuous CLMs on `L²(γ_n)` that satisfy
-the same eigenvalue equation on every Wiener chaos:
-
-- `mehlerOp_eq_smul_of_mem_wienerChaos` (already proved): for
-  `f ∈ wienerChaos n k`, `mehlerOp n t ht f = e^{-kt} • f`.
-- `ouSemigroupAct_eq_smul_of_mem_wienerChaos` (already proved):
-  same equation for `ouSemigroupAct`.
-
-By `wienerChaos_isHilbertSum n`, the algebraic direct sum
-`⊕_k wienerChaos n k` is dense in `Lp ℝ 2 (stdGaussianFin n)`. Two
-continuous linear maps agreeing on a dense set are equal — apply
-`ContinuousLinearMap.ext_on` (or the appropriate
-`Submodule.topologicalClosure_minimal` variant).
-
-**Effort**: ~30-60 lines, ~1 day. (Was ~150-250 lines / 3-5 days in
-the original plan, before discovering that the 1D Mehler-Hermite
-identity and its multivariate extension were already proved.)
-
-**Mathlib API**: `ContinuousLinearMap.ext_on` /
-`Submodule.topologicalClosure_minimal` for the agreement step.
+**Companion refactor**: extracted the dense-iSup witness as a public
+lemma `wienerChaos_iSup_topologicalClosure_eq_top` in
+`GaussianHilbert/WienerChaos.lean`. This avoids triggering the
+`∀ i, CompleteSpace (wienerChaos n i)` Pi-instance synthesis that
+`OrthogonalFamily.linearIsometry` would force. The original
+`wienerChaos_isHilbertSum` is now a two-line wrapper combining
+orthogonality and the new totality lemma.
 
 ### Stage W (recommended) — LSI tensorization shortcut
 
@@ -274,7 +265,7 @@ the concrete `ouSemigroupAct`-based statement. Typically a small
 | Stage | Status | Remaining lines | Remaining days | New axioms |
 |---|---|---|---|---|
 | A — Mehler operator | ✅ **DONE** (~700 lines already in OUEigenfunctions.lean) | 0 | 0 | 0 |
-| Ag — Agreement theorem | pre-reqs done; one-liner extension | ~30-60 | ~1 | 0 |
+| Ag — Agreement theorem | ✅ **DONE** (~70-line proof, 2026-05-11) | 0 | 0 | 0 |
 | W — LSI tensorization shortcut | not started | ~250 | 5-7 | **+1 in markov-semigroups** |
 | E — wire-in | not started | ~50 | 1-2 | 0 |
 | **Route W total** | | **~350** | **~1.5-2 weeks** | **+1** |

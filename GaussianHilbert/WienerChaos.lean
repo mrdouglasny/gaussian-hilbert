@@ -229,147 +229,147 @@ theorem wienerChaos_orthogonal (n : ℕ) {j k : ℕ} (hjk : j ≠ k)
   rw [inner_eq_zero_symm]
   exact (h_closed_le hf) g hg
 
-/-- **Wiener chaos decomposition** (Janson Theorem 2.6).
+/-- **Totality of the Wiener-chaos decomposition** (Janson Theorem 2.6, density part).
 
-The family `(wienerChaos γ k)_{k ∈ ℕ}` is an orthogonal Hilbert sum
-decomposition of $L^2(\gamma)$.
+The topological closure of the algebraic sum $\bigvee_k \mathcal H_k$
+of all Wiener chaos subspaces equals all of $L^2(\gamma_n)$.
 
-**Proof:**
-1. Orthogonality of distinct chaos spaces (`wienerChaos_orthogonal`)
-   gives the orthogonal-family hypothesis.
-2. Density of polynomials in $L^2(\gamma)$ (`hermiteMulti_dense`)
-   gives the totality hypothesis: any `f : Lp ℝ 2 (stdGaussianFin n)`
-   is approximated arbitrarily well in `L²` by finite linear
-   combinations of multivariate Hermite polynomials, each of which
-   lies in some `wienerChaos n (totalDegree α)`. Thus the
-   polynomial linear combination belongs to `⨆ k, wienerChaos n k`,
-   showing every `f` is in the topological closure of the iSup. -/
+Exposed as a standalone lemma so other proofs can invoke totality
+without needing the Pi-completeness instance
+`∀ i, CompleteSpace (wienerChaos n i)` that
+`OrthogonalFamily.linearIsometry`-based extractions would force. -/
+theorem wienerChaos_iSup_topologicalClosure_eq_top (n : ℕ) :
+    (⨆ k : ℕ, wienerChaos n k).topologicalClosure = ⊤ := by
+  refine le_antisymm le_top ?_
+  intro f _
+  rw [← SetLike.mem_coe, Submodule.topologicalClosure_coe, Metric.mem_closure_iff]
+  intro ε hε
+  -- Apply density of Hermite polynomials with parameter ε².
+  have hε_sq : 0 < ε ^ 2 := pow_pos hε 2
+  have hf_memLp : MemLp (f : (Fin n → ℝ) → ℝ) 2 (stdGaussianFin n) := Lp.memLp f
+  obtain ⟨s, c, hs⟩ :=
+    hermiteMulti_dense (f : (Fin n → ℝ) → ℝ) hf_memLp (ε ^ 2) hε_sq
+  -- Build the polynomial approximation function.
+  set g : (Fin n → ℝ) → ℝ := fun x => ∑ α ∈ s, c α * hermiteMultiEval α x with hg_def
+  -- Show g is in L².
+  have hg_memLp : MemLp g 2 (stdGaussianFin n) := by
+    refine memLp_finset_sum s ?_
+    intro α _
+    exact (hermiteMultiEval_memLp α).const_mul (c α)
+  -- Define the corresponding Lp element.
+  set gLp : Lp ℝ 2 (stdGaussianFin n) := hg_memLp.toLp g with hgLp_def
+  -- Pointwise: gLp =ᵐ g.
+  have h_gLp_ae : (gLp : (Fin n → ℝ) → ℝ) =ᵐ[stdGaussianFin n] g :=
+    MemLp.coeFn_toLp hg_memLp
+  -- Inline lemma: the coercion of a finite Lp sum is a.e. the sum of the coercions.
+  have h_coeFn_sum : ∀ (t : Finset (Fin n → ℕ))
+      (F : (Fin n → ℕ) → Lp ℝ 2 (stdGaussianFin n)),
+      ((∑ i ∈ t, F i : Lp ℝ 2 (stdGaussianFin n)) : (Fin n → ℝ) → ℝ)
+        =ᵐ[stdGaussianFin n] ∑ i ∈ t, ((F i : Lp ℝ 2 (stdGaussianFin n))
+          : (Fin n → ℝ) → ℝ) := by
+    intro t F
+    classical
+    induction t using Finset.induction with
+    | empty =>
+        simp only [Finset.sum_empty]
+        exact Lp.coeFn_zero ℝ 2 (stdGaussianFin n)
+    | insert i t hi ih =>
+        rw [Finset.sum_insert hi, Finset.sum_insert hi]
+        filter_upwards [Lp.coeFn_add (F i) (∑ j ∈ t, F j), ih]
+          with x hx_add hx_ih
+        simp only [Pi.add_apply, Finset.sum_apply] at hx_add hx_ih ⊢
+        rw [hx_add, hx_ih]
+  refine ⟨gLp, ?_, ?_⟩
+  · -- gLp ∈ ⨆ k, wienerChaos n k
+    -- Show gLp = ∑ α ∈ s, c α • hermiteMultiLp α as Lp elements.
+    have h_sum_eq : gLp = ∑ α ∈ s, c α • hermiteMultiLp α := by
+      apply Lp.ext
+      -- Goal: ⇑gLp =ᵐ[μ] ⇑(∑ α ∈ s, c α • hermiteMultiLp α)
+      refine h_gLp_ae.trans ?_
+      -- Goal: g =ᵐ[μ] ⇑(∑ α ∈ s, c α • hermiteMultiLp α)
+      symm
+      -- Goal: ⇑(∑ α ∈ s, c α • hermiteMultiLp α) =ᵐ[μ] g
+      have h_sum_coe := h_coeFn_sum s (fun α => c α • hermiteMultiLp α)
+      refine h_sum_coe.trans ?_
+      -- Goal: ∑ α ∈ s, ⇑(c α • hermiteMultiLp α) =ᵐ[μ] g
+      have h_each : ∀ α ∈ (s : Set (Fin n → ℕ)),
+          ∀ᵐ x ∂(stdGaussianFin n),
+            ((c α • hermiteMultiLp α : Lp ℝ 2 (stdGaussianFin n))
+                : (Fin n → ℝ) → ℝ) x = c α * hermiteMultiEval α x := by
+        intro α _
+        have h1 : ((c α • hermiteMultiLp α : Lp ℝ 2 (stdGaussianFin n))
+              : (Fin n → ℝ) → ℝ) =ᵐ[stdGaussianFin n]
+              fun x => c α * hermiteMultiEval α x := by
+          refine (Lp.coeFn_smul (c α) (hermiteMultiLp α)).trans ?_
+          filter_upwards [hermiteMultiLp_coeFn α] with x hx
+          simp [hx, smul_eq_mul]
+        exact h1
+      have h_ae_all : ∀ᵐ x ∂(stdGaussianFin n), ∀ α ∈ (s : Set (Fin n → ℕ)),
+          ((c α • hermiteMultiLp α : Lp ℝ 2 (stdGaussianFin n))
+              : (Fin n → ℝ) → ℝ) x = c α * hermiteMultiEval α x :=
+        (ae_ball_iff s.countable_toSet).mpr h_each
+      filter_upwards [h_ae_all] with x hx
+      show (∑ α ∈ s, ((c α • hermiteMultiLp α : Lp ℝ 2 (stdGaussianFin n))
+            : (Fin n → ℝ) → ℝ)) x = g x
+      rw [Finset.sum_apply]
+      exact Finset.sum_congr rfl (fun α hα => hx α (Finset.mem_coe.mpr hα))
+    rw [h_sum_eq]
+    -- Each c α • hermiteMultiLp α ∈ wienerChaos n (totalDegree α) ≤ ⨆ k, wienerChaos n k.
+    apply Submodule.sum_mem
+    intro α _
+    apply Submodule.smul_mem
+    have h_mem : hermiteMultiLp α ∈ wienerChaos n (MultiIndex.totalDegree α) :=
+      hermiteMultiLp_mem_wienerChaos n α
+    exact (le_iSup (fun k : ℕ => wienerChaos n k) (MultiIndex.totalDegree α)) h_mem
+  · -- dist f gLp < ε.
+    -- Strategy: ‖f - gLp‖² = ⟨f - gLp, f - gLp⟩_ℝ = ∫ (f - gLp)² < ε².
+    have h_diff_ae :
+        ((f - gLp : Lp ℝ 2 (stdGaussianFin n)) : (Fin n → ℝ) → ℝ)
+          =ᵐ[stdGaussianFin n] fun x => (f : (Fin n → ℝ) → ℝ) x - g x := by
+      refine (Lp.coeFn_sub f gLp).trans ?_
+      filter_upwards [h_gLp_ae] with x hx
+      simp [hx]
+    -- ‖f - gLp‖² = ∫ ((f - gLp) x)^2 ∂μ
+    have h_norm_sq :
+        ‖f - gLp‖ ^ 2
+          = ∫ x, ((f : (Fin n → ℝ) → ℝ) x - g x) ^ 2 ∂(stdGaussianFin n) := by
+      rw [← @real_inner_self_eq_norm_sq _ _ _ (f - gLp), L2.inner_def (𝕜 := ℝ)]
+      refine integral_congr_ae ?_
+      filter_upwards [h_diff_ae] with x hx
+      show ((f - gLp : Lp ℝ 2 (stdGaussianFin n)) : (Fin n → ℝ) → ℝ) x *
+            (starRingEnd ℝ) (((f - gLp : Lp ℝ 2 (stdGaussianFin n)) :
+              (Fin n → ℝ) → ℝ) x) = _
+      rw [hx]
+      simp [sq]
+    have h_norm_sq_lt : ‖f - gLp‖ ^ 2 < ε ^ 2 := by
+      rw [h_norm_sq]
+      -- ∫ ((f - gLp) x)^2 ∂μ < ε^2; from hs we have integral with abs.
+      have h_eq : ∀ x,
+          ((f : (Fin n → ℝ) → ℝ) x - g x) ^ 2
+            = |(f : (Fin n → ℝ) → ℝ) x - g x| ^ 2 := by
+        intro x
+        rw [sq_abs]
+      simp only [h_eq]
+      exact hs
+    -- dist f gLp = ‖f - gLp‖.
+    rw [dist_eq_norm]
+    have h_norm_nonneg : 0 ≤ ‖f - gLp‖ := norm_nonneg _
+    exact lt_of_pow_lt_pow_left₀ 2 hε.le h_norm_sq_lt
+
+/-- **Wiener chaos decomposition** (Janson Theorem 2.6) packaged as
+`IsHilbertSum`: the family `{wienerChaos n k}_{k ∈ ℕ}` is mutually
+orthogonal and totally dense in $L^2(\gamma_n)$. -/
 theorem wienerChaos_isHilbertSum (n : ℕ) :
     IsHilbertSum ℝ (fun k : ℕ => (wienerChaos n k : Submodule ℝ (Lp ℝ 2 (stdGaussianFin n))))
       (fun k => (wienerChaos n k).subtypeₗᵢ) := by
   refine IsHilbertSum.mkInternal _ ?_ ?_
-  · -- OrthogonalFamily
-    apply OrthogonalFamily.of_pairwise
+  · apply OrthogonalFamily.of_pairwise
     intro j k hjk
     show wienerChaos n j ⟂ wienerChaos n k
     rw [Submodule.isOrtho_iff_inner_eq]
     intro u hu v hv
     exact wienerChaos_orthogonal n hjk u v hu hv
-  · -- ⊤ ≤ (⨆ k, wienerChaos n k).topologicalClosure
-    intro f _
-    rw [← SetLike.mem_coe, Submodule.topologicalClosure_coe, Metric.mem_closure_iff]
-    intro ε hε
-    -- Apply density of Hermite polynomials with parameter ε².
-    have hε_sq : 0 < ε ^ 2 := pow_pos hε 2
-    have hf_memLp : MemLp (f : (Fin n → ℝ) → ℝ) 2 (stdGaussianFin n) := Lp.memLp f
-    obtain ⟨s, c, hs⟩ :=
-      hermiteMulti_dense (f : (Fin n → ℝ) → ℝ) hf_memLp (ε ^ 2) hε_sq
-    -- Build the polynomial approximation function.
-    set g : (Fin n → ℝ) → ℝ := fun x => ∑ α ∈ s, c α * hermiteMultiEval α x with hg_def
-    -- Show g is in L².
-    have hg_memLp : MemLp g 2 (stdGaussianFin n) := by
-      refine memLp_finset_sum s ?_
-      intro α _
-      exact (hermiteMultiEval_memLp α).const_mul (c α)
-    -- Define the corresponding Lp element.
-    set gLp : Lp ℝ 2 (stdGaussianFin n) := hg_memLp.toLp g with hgLp_def
-    -- Pointwise: gLp =ᵐ g.
-    have h_gLp_ae : (gLp : (Fin n → ℝ) → ℝ) =ᵐ[stdGaussianFin n] g :=
-      MemLp.coeFn_toLp hg_memLp
-    -- Inline lemma: the coercion of a finite Lp sum is a.e. the sum of the coercions.
-    have h_coeFn_sum : ∀ (t : Finset (Fin n → ℕ))
-        (F : (Fin n → ℕ) → Lp ℝ 2 (stdGaussianFin n)),
-        ((∑ i ∈ t, F i : Lp ℝ 2 (stdGaussianFin n)) : (Fin n → ℝ) → ℝ)
-          =ᵐ[stdGaussianFin n] ∑ i ∈ t, ((F i : Lp ℝ 2 (stdGaussianFin n))
-            : (Fin n → ℝ) → ℝ) := by
-      intro t F
-      classical
-      induction t using Finset.induction with
-      | empty =>
-          simp only [Finset.sum_empty]
-          exact Lp.coeFn_zero ℝ 2 (stdGaussianFin n)
-      | insert i t hi ih =>
-          rw [Finset.sum_insert hi, Finset.sum_insert hi]
-          filter_upwards [Lp.coeFn_add (F i) (∑ j ∈ t, F j), ih]
-            with x hx_add hx_ih
-          simp only [Pi.add_apply, Finset.sum_apply] at hx_add hx_ih ⊢
-          rw [hx_add, hx_ih]
-    refine ⟨gLp, ?_, ?_⟩
-    · -- gLp ∈ ⨆ k, wienerChaos n k
-      -- Show gLp = ∑ α ∈ s, c α • hermiteMultiLp α as Lp elements.
-      have h_sum_eq : gLp = ∑ α ∈ s, c α • hermiteMultiLp α := by
-        apply Lp.ext
-        -- Goal: ⇑gLp =ᵐ[μ] ⇑(∑ α ∈ s, c α • hermiteMultiLp α)
-        refine h_gLp_ae.trans ?_
-        -- Goal: g =ᵐ[μ] ⇑(∑ α ∈ s, c α • hermiteMultiLp α)
-        symm
-        -- Goal: ⇑(∑ α ∈ s, c α • hermiteMultiLp α) =ᵐ[μ] g
-        have h_sum_coe := h_coeFn_sum s (fun α => c α • hermiteMultiLp α)
-        refine h_sum_coe.trans ?_
-        -- Goal: ∑ α ∈ s, ⇑(c α • hermiteMultiLp α) =ᵐ[μ] g
-        have h_each : ∀ α ∈ (s : Set (Fin n → ℕ)),
-            ∀ᵐ x ∂(stdGaussianFin n),
-              ((c α • hermiteMultiLp α : Lp ℝ 2 (stdGaussianFin n))
-                  : (Fin n → ℝ) → ℝ) x = c α * hermiteMultiEval α x := by
-          intro α _
-          have h1 : ((c α • hermiteMultiLp α : Lp ℝ 2 (stdGaussianFin n))
-                : (Fin n → ℝ) → ℝ) =ᵐ[stdGaussianFin n]
-                fun x => c α * hermiteMultiEval α x := by
-            refine (Lp.coeFn_smul (c α) (hermiteMultiLp α)).trans ?_
-            filter_upwards [hermiteMultiLp_coeFn α] with x hx
-            simp [hx, smul_eq_mul]
-          exact h1
-        have h_ae_all : ∀ᵐ x ∂(stdGaussianFin n), ∀ α ∈ (s : Set (Fin n → ℕ)),
-            ((c α • hermiteMultiLp α : Lp ℝ 2 (stdGaussianFin n))
-                : (Fin n → ℝ) → ℝ) x = c α * hermiteMultiEval α x :=
-          (ae_ball_iff s.countable_toSet).mpr h_each
-        filter_upwards [h_ae_all] with x hx
-        show (∑ α ∈ s, ((c α • hermiteMultiLp α : Lp ℝ 2 (stdGaussianFin n))
-              : (Fin n → ℝ) → ℝ)) x = g x
-        rw [Finset.sum_apply]
-        exact Finset.sum_congr rfl (fun α hα => hx α (Finset.mem_coe.mpr hα))
-      rw [h_sum_eq]
-      -- Each c α • hermiteMultiLp α ∈ wienerChaos n (totalDegree α) ≤ ⨆ k, wienerChaos n k.
-      apply Submodule.sum_mem
-      intro α _
-      apply Submodule.smul_mem
-      have h_mem : hermiteMultiLp α ∈ wienerChaos n (MultiIndex.totalDegree α) :=
-        hermiteMultiLp_mem_wienerChaos n α
-      exact (le_iSup (fun k : ℕ => wienerChaos n k) (MultiIndex.totalDegree α)) h_mem
-    · -- dist f gLp < ε.
-      -- Strategy: ‖f - gLp‖² = ⟨f - gLp, f - gLp⟩_ℝ = ∫ (f - gLp)² < ε².
-      have h_diff_ae :
-          ((f - gLp : Lp ℝ 2 (stdGaussianFin n)) : (Fin n → ℝ) → ℝ)
-            =ᵐ[stdGaussianFin n] fun x => (f : (Fin n → ℝ) → ℝ) x - g x := by
-        refine (Lp.coeFn_sub f gLp).trans ?_
-        filter_upwards [h_gLp_ae] with x hx
-        simp [hx]
-      -- ‖f - gLp‖² = ∫ ((f - gLp) x)^2 ∂μ
-      have h_norm_sq :
-          ‖f - gLp‖ ^ 2
-            = ∫ x, ((f : (Fin n → ℝ) → ℝ) x - g x) ^ 2 ∂(stdGaussianFin n) := by
-        rw [← @real_inner_self_eq_norm_sq _ _ _ (f - gLp), L2.inner_def (𝕜 := ℝ)]
-        refine integral_congr_ae ?_
-        filter_upwards [h_diff_ae] with x hx
-        show ((f - gLp : Lp ℝ 2 (stdGaussianFin n)) : (Fin n → ℝ) → ℝ) x *
-              (starRingEnd ℝ) (((f - gLp : Lp ℝ 2 (stdGaussianFin n)) :
-                (Fin n → ℝ) → ℝ) x) = _
-        rw [hx]
-        simp [sq]
-      have h_norm_sq_lt : ‖f - gLp‖ ^ 2 < ε ^ 2 := by
-        rw [h_norm_sq]
-        -- ∫ ((f - gLp) x)^2 ∂μ < ε^2; from hs we have integral with abs.
-        have h_eq : ∀ x,
-            ((f : (Fin n → ℝ) → ℝ) x - g x) ^ 2
-              = |(f : (Fin n → ℝ) → ℝ) x - g x| ^ 2 := by
-          intro x
-          rw [sq_abs]
-        simp only [h_eq]
-        exact hs
-      -- dist f gLp = ‖f - gLp‖.
-      rw [dist_eq_norm]
-      have h_norm_nonneg : 0 ≤ ‖f - gLp‖ := norm_nonneg _
-      exact lt_of_pow_lt_pow_left₀ 2 hε.le h_norm_sq_lt
+  · rw [wienerChaos_iSup_topologicalClosure_eq_top]
 
 /-- **Orthogonal projection onto the $k$-th chaos.** -/
 noncomputable def chaosProjection (n k : ℕ) :

@@ -1461,6 +1461,86 @@ theorem ouSemigroupAct_eq_smul_of_mem_wienerChaos {n : ℕ} (k : ℕ)
     _ = chaosDecay k t • lp.single 2 k fk := chaosDiagCLM_apply_single n t _ht k fk
     _ = coord (chaosDecay k t • f) := by rw [coord.map_smul, hcoords]
 
+/-- **Agreement: the spectral OU semigroup equals the Mehler integral operator.**
+
+For every $t \ge 0$, the operator `ouSemigroupAct n t` defined spectrally
+via the Wiener-chaos `IsHilbertSum` decomposition coincides with the
+Mehler integral operator `mehlerOp n t ht` on $L^2(\gamma_n)$.
+
+**Proof.** Both operators are bounded linear (CLMs) and act as
+multiplication by $e^{-kt}$ on each Wiener chaos $\mathcal H_k =$
+`wienerChaos n k` (by `mehlerOp_eq_smul_of_mem_wienerChaos` and
+`ouSemigroupAct_eq_smul_of_mem_wienerChaos`). Their difference $A$ is
+therefore a CLM vanishing on every $\mathcal H_k$, hence on
+$\bigsqcup_k \mathcal H_k = \bigvee_k \mathcal H_k$, hence on its closure.
+By `wienerChaos_isHilbertSum`, that closure is the whole space, so $A=0$. -/
+theorem mehlerOp_eq_ouSemigroupAct (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    mehlerOp n t ht = ouSemigroupAct n t := by
+  -- Coord isometry as a continuous linear equiv.
+  let coord : MeasureTheory.Lp ℝ 2 (stdGaussianFin n) ≃L[ℝ]
+      lp (fun k : ℕ => wienerChaos n k) 2 :=
+    (chaosCoordEquiv n).toContinuousLinearEquiv
+  let coordCLM : MeasureTheory.Lp ℝ 2 (stdGaussianFin n) →L[ℝ]
+      lp (fun k : ℕ => wienerChaos n k) 2 :=
+    coord.toContinuousLinearMap
+  -- A := coord ∘ mehlerOp - chaosDiagCLM ∘ coord; we will show A = 0.
+  set A : MeasureTheory.Lp ℝ 2 (stdGaussianFin n) →L[ℝ]
+      lp (fun k : ℕ => wienerChaos n k) 2 :=
+    coordCLM.comp (mehlerOp n t ht) - (chaosDiagCLM n t ht).comp coordCLM with hA_def
+  -- Step 1: A vanishes on every Wiener chaos.
+  have h_van : ∀ k : ℕ, wienerChaos n k ≤ A.ker := by
+    intro k f hf
+    -- Goal: A f = 0.
+    show coordCLM (mehlerOp n t ht f) - chaosDiagCLM n t ht (coordCLM f) = 0
+    rw [mehlerOp_eq_smul_of_mem_wienerChaos k t ht f hf]
+    let fk : wienerChaos n k := ⟨f, hf⟩
+    have hsymm : coord.symm (lp.single 2 k fk) = f := by
+      change ((chaosCoordEquiv n).symm (lp.single 2 k fk) :
+        MeasureTheory.Lp ℝ 2 (stdGaussianFin n)) = f
+      simpa [chaosCoordEquiv, fk] using
+        (wienerChaos_isHilbertSum n).linearIsometryEquiv_symm_apply_single (i := k) fk
+    have hcoords : coordCLM f = lp.single 2 k fk := by
+      have h := congrArg coord hsymm
+      simpa [coordCLM, coord] using h.symm
+    rw [coordCLM.map_smul, hcoords, chaosDiagCLM_apply_single]
+    unfold chaosDecay
+    simp [sub_self]
+  -- Step 2: ⨆ k wienerChaos n k ≤ A.ker.
+  have h_sup_le : (⨆ k : ℕ, wienerChaos n k) ≤ A.ker := iSup_le h_van
+  -- Step 3: A.ker is closed; pass to the closure.
+  have h_closure_le :
+      (⨆ k : ℕ, wienerChaos n k).topologicalClosure ≤ A.ker :=
+    Submodule.topologicalClosure_minimal _ h_sup_le A.isClosed_ker
+  -- Step 4: (⨆ k wienerChaos n k).topologicalClosure = ⊤ (totality witness).
+  have h_top : (⨆ k : ℕ, wienerChaos n k).topologicalClosure = ⊤ :=
+    wienerChaos_iSup_topologicalClosure_eq_top n
+  -- Step 5: A.ker = ⊤ ⇒ A = 0.
+  have hA_ker_top : (A.ker : Submodule ℝ _) = ⊤ := by
+    apply le_antisymm le_top
+    calc (⊤ : Submodule ℝ _)
+        = (⨆ k : ℕ, wienerChaos n k).topologicalClosure := h_top.symm
+      _ ≤ A.ker := h_closure_le
+  have hA0 : A = 0 := by
+    apply ContinuousLinearMap.ext
+    intro f
+    have hf : f ∈ A.ker := by rw [hA_ker_top]; trivial
+    exact hf
+  -- Step 6: Extract coordCLM ∘ mehlerOp = chaosDiagCLM ∘ coordCLM, conclude.
+  have h_eq : coordCLM.comp (mehlerOp n t ht) =
+      (chaosDiagCLM n t ht).comp coordCLM := sub_eq_zero.mp hA0
+  apply ContinuousLinearMap.ext
+  intro f
+  -- Goal: mehlerOp n t ht f = ouSemigroupAct n t f.
+  apply coord.injective
+  show coordCLM (mehlerOp n t ht f) =
+    coord.toLinearEquiv (ouSemigroupAct n t f)
+  -- Unfold the spectral definition (0 ≤ t branch).
+  have hrhs : coord.toLinearEquiv (ouSemigroupAct n t f) =
+      chaosDiagCLM n t ht (coordCLM f) := by
+    simp [ouSemigroupAct, dif_pos ht, coord, coordCLM]
+  rw [hrhs]
+  exact DFunLike.congr_fun h_eq f
+
 /-- **Nelson's hypercontractive bound for the OU semigroup.**
 
 For any $p \ge 2$ and $t \ge 0$ with $e^{2t} \ge p - 1$, the OU
