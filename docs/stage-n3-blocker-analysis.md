@@ -75,53 +75,76 @@ weaker statements (and may invalidate the 2026-05-13 Gemini-3.1-pro
 vetting that motivated the bundle in the first place — the bundle
 was specifically created to be IsCore-free).
 
-**Option 4 (mine, "extra textbook axioms")**: introduce ~3-5 new
-*vetted textbook axioms* in markov-semigroups stating the
-unconditional versions of the Markov-semigroup laws for the
-multivariate Gaussian OU semigroup. Specifically:
+**Option 4 (mine, "extra textbook axioms")** — **REJECTED after 3.1-pro
+vetting (2026-05-13)**.
 
-```lean
--- Each would carry full BGL citation + gemini-3.1-pro-preview vetting
--- + a clean tensor-lift discharge plan.
+I proposed introducing 3-4 unconditional textbook axioms for the
+multivariate Gaussian OU semigroup laws. Vetted with gemini-3.1-pro-preview:
+verdict was that **the unconditional versions of `P_semigroup` and
+`P_symmetric` are mathematically false in Lean** due to Bochner
+junk-value behavior with oscillatory signed functions. Specifically:
 
-axiom ouSemigroupFin_compose_general {n : ℕ} (s t : ℝ)
-    (hs : 0 ≤ s) (ht : 0 ≤ t) (f : (Fin n → ℝ) → ℝ) :
-    ouSemigroupFin (s + t) f = ouSemigroupFin s (ouSemigroupFin t f)
+> "If $f$ is a highly oscillatory signed function that is not
+> absolutely integrable under the Mehler measure for $s+t$, then
+> $P_{s+t} f$ evaluates exactly to `0` (junk value). However, the
+> inner integral for $P_t f(z)$ might conditionally converge to a
+> well-defined, rapidly decaying finite value for every $z$ due to
+> cancellation. If that resulting function $P_t f$ is absolutely
+> integrable under $P_s$, the iterated integral $P_s (P_t f)$ will
+> evaluate to a non-zero value. Thus $P_{s+t} f = 0 \ne P_s(P_t f)$,
+> and the 'reduces to 0 = 0' Fubini discharge plan mathematically
+> collapses."
 
-axiom ouSemigroupFin_eLpNorm_contraction {n : ℕ} (t : ℝ) (ht : 0 ≤ t)
-    (f : (Fin n → ℝ) → ℝ) (hf : MeasureTheory.MemLp f 2 (γFin n)) :
-    eLpNorm (ouSemigroupFin t f) 2 (γFin n) ≤ eLpNorm f 2 (γFin n)
+You also can't "fix" this by artificially truncating $P_t f$ to `0`
+for $f \notin L^2$, because that immediately violates `P_zero : ∀ f, P 0 f = f`.
 
--- Plus possibly: P_symmetric_general, energy_eq_deriv_general
-```
+**Implication**: the 2026-05-13 bundle refactor of `Abstract/Hypercontractivity.lean`
+that put `MarkovSemigroup` into unconditional-pointwise-functions
+shape was itself mathematically flawed. The previous gemini-3.1-pro
+vetting that approved it was wrong about Lean integration semantics.
 
-Each axiom is a standard fact in the BGL framework (the Gaussian OU
-semigroup is a Markov semigroup in the literature — the unconditional
-laws hold by construction); each has a Fubini-style discharge plan;
-each adds to markov-semigroups' textbook-axiom load.
+3.1-pro vetted axioms C and D individually (the two with `MemLp` /
+`IsCoreFin` hypotheses, which avoid the junk-value trap):
 
-**Tradeoff for Option 4**: 3-5 more textbook axioms in markov-semigroups
-(brings total from 11 to ~14-16). pphi2's transitive axiom load grows
-from the expected 4 (Gross + 3 GaussianFin) to ~7-9. Each new axiom is
-narrow and citable.
+- **Axiom C** (`ouSemigroupFin_eLpNorm_contraction`, with `MemLp f 2`
+  hypothesis, using `eLpNorm` not raw integral): **Likely correct**.
+- **Axiom D** (`ouSemigroupFin_energy_eq_deriv`, with both
+  `IsCoreFin` hypotheses): **Likely correct**.
 
-## Recommendation
+But these alone aren't enough — we'd still need the unconditional
+`P_semigroup` and `P_symmetric` somewhere, and those don't admit
+the textbook-axiom treatment.
 
-**Option 4** is the lowest-friction path consistent with our axiom
-philosophy ("vetted provable textbook theorem with discharge plan").
-It treats the unconditional Markov-semigroup laws on the Gaussian OU
-as additional standard facts, which is mathematically correct, and
-postpones the broader question of "should the abstract
-`MarkovSemigroup` structure require IsCore-restricted laws?" to a
-later cleanup.
+## Recommendation (revised 2026-05-13 post-3.1-pro)
 
-**Option 3** is also defensible if you prefer to keep the axiom count
-low and accept that the bundle refactor's "all-functions" framing was
-overly ambitious. The trade is re-vetting Gross on the new weaker
-statements.
+3.1-pro recommends **Alternative 2** (Lp quotient carrier) or
+**Alternative 1** (relax MarkovSemigroup fields back to IsCore /
+MemLp hypotheses) as the *only* mathematically sound paths.
 
-**Options 1 and 2** are bigger upstream projects; both buy a cleaner
-final structure but cost ~1-2 more weeks of work each.
+Quoting 3.1-pro:
+
+> "The gold standard in mathlib (e.g., `MeasureTheory.Lp`) is to
+> formulate `P` as a monoid homomorphism to bounded linear operators:
+> `ℝ≥0 → (Lp ℝ 2 μ →L[ℝ] Lp ℝ 2 μ)`. On this space, composition
+> `P(s+t) = P s ∘ P t`, symmetry `⟪P t f, g⟫ = ⟪f, P t g⟫`, and
+> `P 0 f = f` hold flawlessly and unconditionally because all elements
+> are μ-almost-everywhere equivalence classes of L² functions, entirely
+> side-stepping Bochner junk values."
+
+This means Stage N3 actually requires an **upstream refactor of
+`Abstract/Hypercontractivity.lean`**, not an additional textbook
+axiom in `EuclideanFin.lean`. The choice is between:
+
+- **Option 1**: relax `MarkovSemigroup` to carry `MemLp` / `IsCore`
+  hypotheses on its laws (and re-vet Gross on the new weaker
+  statements with gemini-3.1-pro — should pass since BGL Gross is
+  routinely stated on a core algebra).
+- **Option 2**: refactor `MarkovSemigroup` to carry an `Lp →L Lp`
+  operator-valued semigroup. More substantial, but produces a much
+  cleaner abstract framework. Mathlib-aligned.
+
+Either is a real upstream project (~1 week each, with Gross re-vetting).
+The user's call which to pursue.
 
 ## Pre-existing axiom-count counts (no changes since codex bailed)
 
@@ -135,6 +158,25 @@ final structure but cost ~1-2 more weeks of work each.
 
 ## Suggested next action
 
-Pick option 3 or 4, vet the new statements with gemini-3.1-pro, then
-re-dispatch codex with a revised brief that includes the new axiom
-statements as inputs (rather than asking codex to derive them).
+Pick **Option 1** (relax MarkovSemigroup to IsCore/MemLp hypotheses,
+re-vet Gross axioms) or **Option 2** (refactor MarkovSemigroup to
+operator-valued `Lp →L Lp` semigroup). Both are upstream refactors of
+`Abstract/Hypercontractivity.lean`. Option 1 is the smaller refactor;
+Option 2 is the cleaner long-term framework.
+
+If picking Option 1: dispatch a codex rescue with a brief covering
+(a) the structure rewrite of `MarkovSemigroup`/`DirichletMarkovSemigroup`
+to carry `MemLp` / `IsCore` hypotheses, (b) re-vetting the
+`gross_lsi_implies_hypercontractive` axiom on the new weaker
+statement with gemini-3.1-pro-preview, (c) updating the gaussian-hilbert
+wire-in N3 to use the relaxed bundle. Estimated ~5-7 days.
+
+If picking Option 2: same but with the `Lp →L Lp` operator-valued
+formulation. Estimated ~7-14 days, with the upside that the resulting
+abstract framework is much closer to mathlib conventions and may help
+future Markov-semigroup projects.
+
+Either way: **the 2026-05-13 bundle refactor needs to be partially
+reverted/redone**. The motivation for the unconditional shape (the
+original gemini-3.1-pro vet) turned out to be flawed about Lean
+integration semantics.
