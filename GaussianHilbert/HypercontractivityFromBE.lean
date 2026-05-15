@@ -6,6 +6,7 @@ import MarkovSemigroups.Abstract.Hypercontractivity
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanEntropyDecay
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanFin
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanFinLp
+import GaussianHilbert.OUEigenfunctions
 
 /-! # Intended transitive use of markov-semigroups for hypercontractivity
 
@@ -224,5 +225,165 @@ theorem stdGaussianFin_dirichletMarkovSemigroup_isHypercontractive (n : ℕ) :
   gross_lsi_implies_hypercontractive
     (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n) 1 one_pos
     (stdGaussianFin_dirichletMarkovSemigroup_satisfiesLogSobolev n)
+
+/-! ## Stage E.2 — concrete `ouSemigroupAct_eLpNorm_hypercontractive`
+discharge (2026-05-15)
+
+Bridges the abstract `IsHypercontractive` (via the Phase 2 bundle's
+underlying `MarkovSemigroup`) to the concrete `eLpNorm`-based statement
+that gaussian-hilbert exposes. The key observation is that all the
+moving pieces agree **definitionally**:
+
+* `γFin n = stdGaussianFin n` is `rfl` (both reduce to
+  `Measure.pi (fun _ => gaussianReal 0 1)`).
+* `ouSemigroupFin t f = mehlerFun n t f` is `rfl` (both are the same
+  Mehler integral with `ouShiftFin = ouAffine` reducibly).
+* `(stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup.P t =
+  ouSemigroupFinLp (n := n) t` definitionally from the bundle.
+
+The remaining work is:
+
+1. `t = 0` case: `h_nelson : p - 1 ≤ exp(0) = 1` ⇒ `p ≤ 2`, combined
+   with `hp : 2 ≤ p` ⇒ `p = 2`; `ouSemigroupAct n 0 = id`; bound is
+   reflexive equality.
+2. `t > 0` case: apply `IsHypercontractive` with abstract `p := 2`,
+   abstract `q := target_p`, abstract `ρ := 1`. The chained `ae_eq`s
+   produce equal `eLpNorm`s on both sides.
+-/
+
+open MeasureTheory ENNReal GaussianFin
+
+private lemma γFin_eq_stdGaussianFin (n : ℕ) :
+    GaussianFin.γFin n = stdGaussianFin n := rfl
+
+private lemma ouSemigroupFin_eq_mehlerFun (n : ℕ) (t : ℝ) (f : (Fin n → ℝ) → ℝ) :
+    GaussianFin.ouSemigroupFin t f = mehlerFun n t f := rfl
+
+/-- The Phase 2 bundle's underlying semigroup action `(P t f)` agrees
+a.e. with gaussian-hilbert's spectral OU action `ouSemigroupAct n t f`. -/
+private lemma bundle_P_ae_eq_ouSemigroupAct (n : ℕ) (t : ℝ) (ht : 0 ≤ t)
+    (f : Lp ℝ 2 (stdGaussianFin n)) :
+    (((GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup.P t f
+        : (Fin n → ℝ) → ℝ))
+      =ᵐ[stdGaussianFin n]
+      ((ouSemigroupAct n t f : (Fin n → ℝ) → ℝ)) := by
+  -- (bundle.P t f) is (ouSemigroupFinLp t f) by definition, whose underlying
+  -- function is a.e. ouSemigroupFin t (⇑f) = mehlerFun n t (⇑f) (rfl).
+  have hLp : (((GaussianFin.ouSemigroupFinLp (n := n) t f) : (Fin n → ℝ) → ℝ))
+      =ᵐ[GaussianFin.γFin n] GaussianFin.ouSemigroupFin t ((⇑f) : (Fin n → ℝ) → ℝ) :=
+    GaussianFin.ouSemigroupFinLp_coeFn_ae (n := n) t ht f
+  -- (mehlerOp n t ht f) is a.e. mehlerFun n t (⇑f).
+  have hMehler : ((mehlerOp n t ht f : (Fin n → ℝ) → ℝ))
+      =ᵐ[stdGaussianFin n] mehlerFun n t ((⇑f) : (Fin n → ℝ) → ℝ) :=
+    mehlerOp_apply n t ht f
+  -- Stage Ag: mehlerOp = ouSemigroupAct as CLMs.
+  have hAg : mehlerOp n t ht = ouSemigroupAct n t :=
+    mehlerOp_eq_ouSemigroupAct n t ht
+  -- bundle.P t f = ouSemigroupFinLp t f definitionally.
+  have hP_def :
+      (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup.P t f
+        = GaussianFin.ouSemigroupFinLp (n := n) t f := rfl
+  rw [hP_def]
+  -- Chain: ouSemigroupFinLp = ouSemigroupFin = mehlerFun =ᵐ mehlerOp = ouSemigroupAct.
+  refine hLp.trans ?_
+  rw [← hAg]
+  exact hMehler.symm
+
+/-- **Concrete Bonami-Beckner-Nelson hypercontractivity for the
+multivariate standard Gaussian OU semigroup** (Stage E.2, 2026-05-15).
+
+For `p ≥ 2`, `t ≥ 0`, and `p - 1 ≤ exp(2t)` (the Nelson threshold),
+the OU semigroup `ouSemigroupAct n t` maps `L²(γ_n)` to `L^p(γ_n)` with
+operator norm ≤ 1.
+
+This is the discharge of the previously-axiomatised
+`ouSemigroupAct_eLpNorm_hypercontractive`. The proof routes through
+the abstract Phase 2 `DirichletMarkovSemigroup` bundle and
+`gross_lsi_implies_hypercontractive`, then identifies the abstract
+semigroup action with `ouSemigroupAct` via the chain
+`bundle.P t = ouSemigroupFinLp t =ᵐ ouSemigroupFin t = mehlerFun n t
+=ᵐ mehlerOp n t ht = ouSemigroupAct n t`. -/
+theorem ouSemigroupAct_eLpNorm_hypercontractive_proved {n : ℕ}
+    (p : ℝ) (hp : 2 ≤ p)
+    (t : ℝ) (ht : 0 ≤ t)
+    (h_nelson : p - 1 ≤ Real.exp (2 * t))
+    (f : Lp ℝ 2 (stdGaussianFin n)) :
+    eLpNorm
+        ((ouSemigroupAct n t f : (Fin n → ℝ) → ℝ))
+        (ENNReal.ofReal p) (stdGaussianFin n) ≤
+      eLpNorm
+        ((f : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n) := by
+  rcases eq_or_lt_of_le ht with ht0 | ht_pos
+  · -- t = 0 case: h_nelson forces p ≤ 2, combined with hp gives p = 2.
+    subst ht0
+    have hp_le : p ≤ 2 := by
+      have h := h_nelson
+      simp at h
+      linarith
+    have hp_eq : p = 2 := le_antisymm hp_le hp
+    subst hp_eq
+    -- Now goal: eLpNorm (ouSemigroupAct n 0 f) (ENNReal.ofReal 2) ≤ eLpNorm f 2.
+    -- Use the agreement: ouSemigroupAct n 0 f =ᵐ bundle.P 0 f = ouSemigroupFinLp 0 f = f.
+    have hae := bundle_P_ae_eq_ouSemigroupAct n 0 le_rfl f
+    -- bundle.P 0 = ouSemigroupFinLp_zero = id, so bundle.P 0 f = f.
+    have hP0 : (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup.P 0 f
+        = f := by
+      change GaussianFin.ouSemigroupFinLp (n := n) 0 f = f
+      rw [GaussianFin.ouSemigroupFinLp_zero]
+      rfl
+    rw [hP0] at hae
+    -- hae : (f : ...) =ᵐ (ouSemigroupAct n 0 f : ...)
+    -- Need: eLpNorm (ouSemigroupAct n 0 f) (ofReal 2) ≤ eLpNorm f 2.
+    have hofReal2 : ENNReal.ofReal 2 = (2 : ℝ≥0∞) := by
+      rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) from rfl, ENNReal.ofReal_natCast]
+      rfl
+    rw [hofReal2, eLpNorm_congr_ae hae.symm]
+    exact le_refl _
+  · -- t > 0 case: apply IsHypercontractive with abstract p := 2, q := target_p.
+    have hHC := stdGaussianFin_dirichletMarkovSemigroup_isHypercontractive n
+    obtain ⟨_, hHC⟩ := hHC
+    -- Apply with abstract_p := 2, abstract_q := p (target).
+    -- Need: 1 < 2, 2 ≤ p, 0 < t, p ≤ 1 + (2 - 1) * exp(2 * 1 * t) = 1 + exp(2t).
+    have h_q_bound : p ≤ 1 + (2 - 1) * Real.exp (2 * 1 * t) := by
+      have : Real.exp (2 * 1 * t) = Real.exp (2 * t) := by ring_nf
+      rw [this]
+      linarith
+    have hf_memLp2 :
+        MemLp ((⇑f) : (Fin n → ℝ) → ℝ) (ENNReal.ofReal 2)
+          (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup.μ := by
+      have hμ_eq :
+          (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup.μ
+            = stdGaussianFin n := rfl
+      rw [hμ_eq]
+      have hofReal2 : ENNReal.ofReal 2 = (2 : ℝ≥0∞) := by
+        rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) from rfl, ENNReal.ofReal_natCast]
+        rfl
+      rw [hofReal2]
+      exact Lp.memLp f
+    have hbound := hHC 2 p t (by norm_num : (1:ℝ) < 2) hp ht_pos h_q_bound f hf_memLp2
+    -- hbound : eLpNorm ((bundle.P t f) : ...) (ofReal p) bundle.μ ≤
+    --          eLpNorm ((⇑f) : ...) (ofReal 2) bundle.μ.
+    -- bundle.μ = stdGaussianFin n is rfl (definitionally γFin n = stdGaussianFin n);
+    -- (bundle.P t f) =ᵐ (ouSemigroupAct n t f) by bundle_P_ae_eq_ouSemigroupAct;
+    -- ENNReal.ofReal 2 = (2 : ℝ≥0∞).
+    have hae := bundle_P_ae_eq_ouSemigroupAct n t ht_pos.le f
+    have hofReal2 : ENNReal.ofReal 2 = (2 : ℝ≥0∞) := by
+      rw [show (2 : ℝ) = ((2 : ℕ) : ℝ) from rfl, ENNReal.ofReal_natCast]
+      rfl
+    -- Massage hbound's RHS to use 2 instead of ENNReal.ofReal 2.
+    have hbound' :
+        eLpNorm
+          (((GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup.P t f
+            : (Fin n → ℝ) → ℝ))
+          (ENNReal.ofReal p) (stdGaussianFin n) ≤
+            eLpNorm ((f : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n) := by
+      have := hbound
+      rw [hofReal2] at this
+      -- bundle.μ = stdGaussianFin n is rfl; the goal type matches.
+      exact this
+    -- Swap (bundle.P t f) for (ouSemigroupAct n t f) on the LHS via ae_eq.
+    rw [show (((GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup.P t f
+        : (Fin n → ℝ) → ℝ)) = _ from rfl] at hbound'
+    exact (eLpNorm_congr_ae hae).symm.le.trans hbound'
 
 end GaussianHilbert
