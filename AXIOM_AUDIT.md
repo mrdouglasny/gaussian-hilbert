@@ -1,6 +1,41 @@
 # Axiom audit — gaussian-hilbert
 
-*Last updated 2026-05-11.*
+*Last updated 2026-05-15.*
+
+## 2026-05-15 — Stage N nearly closed via Lp-carrier Phase 2 + Phase 3 wire-in
+
+The Lp-carrier Phase 2 work in markov-semigroups landed
+`GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n :
+DirichletMarkovSemigroup (Fin n → ℝ)` (commit `6782dc7` on
+`feat/lp-carrier-stdGaussianFin-dirichletmarkov`). The Phase 3 smoke test
+in this repo (branch `phase-3-smoke-test`, commit `0f0c5eb`) bumps the
+markov-semigroups pin to that branch and adds two compiling `example`s
+in `HypercontractivityFromBE.lean`:
+
+1. The bundle is reachable and well-typed as a
+   `DirichletMarkovSemigroup (Fin n → ℝ)`.
+2. The bundle slots into `gross_lsi_implies_hypercontractive`, yielding
+   `IsHypercontractive` of the underlying `MarkovSemigroup` given an
+   `h_lsi : SatisfiesLogSobolev D 1` hypothesis.
+
+This collapses Stage N's "build BE → DirichletMarkovSemigroup bridge" work
+(formerly estimated at ~10-14 days) into a delivered bundle. Remaining
+work on the discharge: ~1-2 days of adapter code (`h_lsi` construction +
+abstract-to-concrete predicate bridge); see
+[`docs/hypercontractivity-discharge-plan.md`](docs/hypercontractivity-discharge-plan.md)
+revised total-effort table for the updated breakdown.
+
+**New transitive axiom at the public boundary** (visible after the
+smoke test): `GaussianFin.ouSemigroupFin_l2_sq_hasDerivWithinAt`
+(markov-semigroups, EuclideanFin.lean:2643). The Lp-carrier Phase 2
+proved `energy_eq_deriv` by polarization from this existing axiom rather
+than the brief's preferred fresh Fubini lift. The axiom is on its own
+discharge path (Phase 2.5 cleanup, ~1.5 days, dual-vetted Fubini-lift
+plan); discharging it eliminates this transitive dependency from the
+gaussian-hilbert public boundary. **This does not change gaussian-hilbert's
+own axiom count (still 1: `ouSemigroupAct_eLpNorm_hypercontractive`)**;
+it adds an inherited axiom from markov-semigroups visible in
+`#print axioms` output.
 
 ## Purpose
 

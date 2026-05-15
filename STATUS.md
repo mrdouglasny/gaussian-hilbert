@@ -1,7 +1,7 @@
 # Status
 
 *Snapshot of the repository's current development state. Last
-refreshed: 2026-05-11. For axiom-by-axiom detail see
+refreshed: 2026-05-15. For axiom-by-axiom detail see
 [`AXIOM_AUDIT.md`](AXIOM_AUDIT.md); for forward-looking
 development directions see [`TODO.md`](TODO.md).*
 
@@ -9,11 +9,11 @@ development directions see [`TODO.md`](TODO.md).*
 
 | | Count |
 |---|---|
-| Library files | 5 (`HermitePolynomials`, `WienerChaos`, `OUEigenfunctions`, `PolynomialChaosConcentration`, `PolynomialDensity`) |
-| Lean source | ~2,540 lines |
+| Library files | 6 (`HermitePolynomials`, `WienerChaos`, `OUEigenfunctions`, `PolynomialChaosConcentration`, `PolynomialDensity`, `HypercontractivityFromBE`) |
+| Lean source | ~2,720 lines |
 | Sorries | **0** |
 | Axioms | **1** (Bonami-Beckner-Nelson hypercontractivity, intentionally deferred) |
-| `lake build` | clean (3213 jobs as of 2026-05-11) |
+| `lake build` | clean (3216 jobs as of 2026-05-15) |
 | Total dependencies | Mathlib v4.29.0 + gaussian-field + markov-semigroups |
 
 ## Files
@@ -63,26 +63,64 @@ No other consumers yet. Future natural consumers:
 
 ## Discharge horizon
 
-The remaining `ouSemigroupAct_eLpNorm_hypercontractive` axiom requires
-the Mehler integral + LSI tensorization / Bakry-Émery for a native
-proof. The discharge plans are documented in:
+After the upstream Lp-carrier refactor + Phase 2 + Phase 3 wire-in
+(2026-05-13 to 2026-05-15), the remaining
+`ouSemigroupAct_eLpNorm_hypercontractive` discharge has collapsed to
+**~1-2 active days** of adapter work. Concretely:
 
-- [`docs/ou-discharge-codex-plan.md`](docs/ou-discharge-codex-plan.md)
-  Route 2 (Mehler integral, ~2-3 weeks).
-- [`docs/ou-mehler-discharge-plan.md`](docs/ou-mehler-discharge-plan.md)
-  (the broader Stages A-E with C-β as the LSI-tensorization shortcut,
-  ~3-4 weeks total).
+* **N1 BE instance** (multivariate `BakryEmerySpace (Fin n → ℝ)`):
+  ✅ already on markov-semigroups main since commit `e1e2011`.
+* **Lp-carrier Phase 1** (abstract `MarkovSemigroup` /
+  `DirichletMarkovSemigroup`): ✅ on markov-semigroups main.
+* **Lp-carrier Phase 2** (concrete
+  `GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n`): ✅ on
+  markov-semigroups branch
+  `feat/lp-carrier-stdGaussianFin-dirichletmarkov` at commit `6782dc7`
+  (the BE → DirichletMarkovSemigroup bridge that the discharge plan
+  used to call N3).
+* **Phase 3 wire-in (smoke test)**: ✅ this repo, branch
+  `phase-3-smoke-test` at commit `0f0c5eb`. `HypercontractivityFromBE.lean`
+  contains two compiling `example`s: bundle reachable from gaussian-hilbert,
+  and `gross_lsi_implies_hypercontractive` accepts it.
 
-The full discharge depends transitively on either the markov-semigroups
-Gross axioms (~3-6 weeks of further work) or accepts the LSI
-tensorization fact as a single textbook axiom in markov-semigroups
-(~1 additional week).
+What remains:
+
+1. **`h_lsi` adapter** (~50-100 lines): construct
+   `DirichletMarkovSemigroup.SatisfiesLogSobolev (stdGaussianFin_dirichletMarkovSemigroup n) 1`
+   from `BakryEmerySpace.satisfiesLogSobolev (be := stdGaussianFin.bakryEmerySpace n)`.
+2. **Predicate adapter** (~50 lines): bridge the abstract
+   `MarkovSemigroup.IsHypercontractive` from
+   `gross_lsi_implies_hypercontractive` to the concrete `eLpNorm`-form
+   statement of `ouSemigroupAct_eLpNorm_hypercontractive`. Uses the
+   already-proved `mehlerOp_eq_ouSemigroupAct` (Stage Ag, 2026-05-11).
+
+Updated estimate at `docs/hypercontractivity-discharge-plan.md`. The
+old plan listed ~10-14 days for "Stage N" and ~5-7 days for "Stage W"
+(LSI tensorization shortcut), but most of that effort was actually
+delivered by the Lp-carrier Phase 1+2 + the prior N1 BE instance.
 
 For the pphi2 T² continuum-limit chain (the immediate downstream goal),
-the gaussian-hilbert side is now as clean as possible without crossing
-into the multi-month Mehler/hypercontractivity discharge effort.
+this means the upstream gaussian-hilbert side is essentially closed:
+once the two adapters land, `polynomial_chaos_concentration` and the
+downstream OU placeholder are end-to-end axiom-free for the standard
+trio + the inherited Gross axioms in markov-semigroups.
 
 ## Recent history
+
+- **2026-05-15:** Phase 3 wire-in smoke test landed on
+  `phase-3-smoke-test` (commit `0f0c5eb`).
+  `HypercontractivityFromBE.lean` now exercises the new
+  `GaussianFin.stdGaussianFin_dirichletMarkovSemigroup` bundle from
+  markov-semigroups Phase 2, with two passing `example` checks
+  confirming the bundle types correctly and slots into
+  `gross_lsi_implies_hypercontractive`. MarkovSemigroups pin bumped to
+  `feat/lp-carrier-stdGaussianFin-dirichletmarkov` (`6782dc7`).
+  Transitive axioms newly visible at the public boundary:
+  `[propext, Classical.choice, ouSemigroupFin_l2_sq_hasDerivWithinAt, Quot.sound]`
+  on the Phase 2 bundle (the polarization-introduced `l2_sq` axiom is
+  load-bearing until the Fubini-lift discharge plan is executed).
+  Stage N status revised: now ~1-2 days from full
+  `ouSemigroupAct_eLpNorm_hypercontractive` discharge.
 
 - **2026-05-11:** Discharged `polynomial_dense_L2_of_subGaussian` via
   the L²-orthogonal-complement / Carleman moment-determinacy route

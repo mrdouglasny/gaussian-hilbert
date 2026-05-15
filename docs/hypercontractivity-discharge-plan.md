@@ -260,39 +260,53 @@ the concrete `ouSemigroupAct`-based statement. Typically a small
 
 ---
 
-## Total effort (revised 2026-05-11 after the Mehler-already-built discovery)
+## Total effort (revised 2026-05-15 after Lp-carrier Phase 1+2 + Phase 3 smoke test)
+
+The 2026-05-13 → 2026-05-15 work in markov-semigroups (Lp-carrier
+Phase 1 + 2) collapsed most of Stage N's "build BE → DirichletMarkovSemigroup
+bridge" work into a delivered bundle. Stage N route is now strictly
+preferable to Stage W — same time-to-completion, no new axioms, more
+infrastructure preserved.
 
 | Stage | Status | Remaining lines | Remaining days | New axioms |
 |---|---|---|---|---|
-| A — Mehler operator | ✅ **DONE** (~700 lines already in OUEigenfunctions.lean) | 0 | 0 | 0 |
+| A — Mehler operator | ✅ **DONE** (~700 lines in OUEigenfunctions.lean) | 0 | 0 | 0 |
 | Ag — Agreement theorem | ✅ **DONE** (~70-line proof, 2026-05-11) | 0 | 0 | 0 |
-| W — LSI tensorization shortcut | not started | ~250 | 5-7 | **+1 in markov-semigroups** |
-| E — wire-in | not started | ~50 | 1-2 | 0 |
-| **Route W total** | | **~350** | **~1.5-2 weeks** | **+1** |
-| N — full BE instance (instead of W) | not started | ~600 | 10-14 | 0 |
-| **Route N total** | | **~700** | **~2.5-3 weeks** | **0** |
+| N1 — multivariate BE instance (`stdGaussianFin.bakryEmerySpace`) | ✅ **DONE** (markov-semigroups main, commit `e1e2011`, before 2026-05-13) | 0 | 0 | 0 |
+| Lp-carrier Phase 1 (abstract `MarkovSemigroup`/`DirichletMarkovSemigroup`) | ✅ **DONE** (markov-semigroups main, `e1e2011`) | 0 | 0 | 0 |
+| Lp-carrier Phase 2 (`stdGaussianFin_dirichletMarkovSemigroup` bundle = the old N3 bridge) | ✅ **DONE** (markov-semigroups branch, commit `6782dc7`, 2026-05-15) | 0 | 0 | 0 (but introduces transitive `ouSemigroupFin_l2_sq_hasDerivWithinAt` via polarization — see Phase 2.5 below) |
+| Phase 3 smoke test (gaussian-hilbert wire-in) | ✅ **DONE** (`phase-3-smoke-test`, commit `0f0c5eb`, 2026-05-15) | 0 | 0 | 0 |
+| **E.1** — `h_lsi` adapter (transfer `BakryEmerySpace.satisfiesLogSobolev` through the new bundle) | not started | ~50-100 | 0.5-1 | 0 |
+| **E.2** — predicate adapter (abstract `IsHypercontractive` → concrete `eLpNorm` form via `mehlerOp_eq_ouSemigroupAct`) | not started | ~50 | 0.5-1 | 0 |
+| **Route N total (remaining)** | | **~100-150** | **~1-2 days** | **0** |
 
-For reference, the **previous estimate** (before discovering Stage A
-was already done): ~750 lines / 2.5-3.5 weeks (Route W) and ~1100 lines /
-3.5-4.5 weeks (Route N). Codex's already-built Mehler scaffolding from
-the 2026-05-10 OU discharge saved approximately one week of work.
-| **Route N total** | **~1100** | **~3.5-4.5 weeks** | **0** |
+For reference: pre-Lp-carrier estimate had Route N at ~600 lines / 10-14
+days because the BE → DirichletMarkovSemigroup bridge was assumed to be a
+~16-field hand build. Phase 2 delivered that bridge as a usable bundle.
+
+### Phase 2.5 follow-up (post-discharge cleanup, optional)
+
+The Phase 2 bundle's `energy_eq_deriv` field was proved by polarization
+from the existing markov-semigroups axiom
+`ouSemigroupFin_l2_sq_hasDerivWithinAt` rather than the brief's preferred
+fresh Fubini lift. This makes that axiom load-bearing at the public
+DirichletMarkovSemigroup boundary (and therefore at gaussian-hilbert's
+`stdGaussianFin_dirichletMarkovSemigroup` consumer site). The axiom is
+already on the markov-semigroups discharge path with a dual-vetted
+plan (Fubini lift through `ouSemigroupFin_insertNth_eq` and
+`integral_γFin_succAbove`, ~1.5 active days). Discharging it eliminates
+the polarization-introduced public-boundary axiom and drops the
+markov-semigroups GaussianFin axiom count 11 → 10.
 
 ---
 
 ## Recommendation
 
-**Route W** (LSI tensorization shortcut). One well-cited textbook
-axiom in markov-semigroups (`lsi_tensorize`) is a cheap price for
-saving ~1 week and avoiding the full 16-field BE-instance
-construction. The axiom is Gross's main tensorization argument from
-the 1975 paper, with BGL §5.2.4 Proposition 5.2.7 as the standard
-reference.
-
-If the multivariate BE instance is wanted for other purposes
-(Stein's method, Brascamp-Lieb, ...) then Route N is the better
-investment — but for *only* the hypercontractivity discharge, Route W
-wins on time-to-discharge.
+**Route N (the only remaining path).** Stage W (LSI tensorization
+shortcut) was the recommendation in the 2026-05-11 plan because Route N
+was estimated at ~600 lines / 10-14 days. With Phase 2 delivered, Route N
+is now ~100-150 lines / 1-2 days — strictly faster than Stage W
+(~250 lines / 5-7 days) and avoids the +1 markov-semigroups axiom.
 
 ---
 
@@ -335,8 +349,19 @@ Coordinated pin bumps required:
 
 ## Status
 
-**Not started.** Pre-conditions satisfied: chaos infrastructure is
-end-to-end axiom-free (verified by `#print axioms` on 2026-05-11).
+**~80% complete (2026-05-15).** Phase 2 + Phase 3 smoke test landed.
+Remaining: ~1-2 active days of adapter work (E.1 + E.2). Phase 2.5
+follow-up (Fubini-lift cleanup of the polarization-introduced axiom)
+is independent and optional.
+
+Pre-conditions all satisfied:
+- Chaos infrastructure end-to-end axiom-free (2026-05-11 #print axioms).
+- Multivariate BE instance proved (markov-semigroups main, `e1e2011`).
+- Lp-carrier Phase 1+2 bundles proved (markov-semigroups
+  `feat/lp-carrier-stdGaussianFin-dirichletmarkov`, `6782dc7`).
+- Phase 3 smoke test compiling (gaussian-hilbert `phase-3-smoke-test`,
+  `0f0c5eb`) — bundle reachable, slots into
+  `gross_lsi_implies_hypercontractive`.
 
 ---
 
