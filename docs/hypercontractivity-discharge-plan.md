@@ -349,19 +349,30 @@ Coordinated pin bumps required:
 
 ## Status
 
-**~80% complete (2026-05-15).** Phase 2 + Phase 3 smoke test landed.
-Remaining: ~1-2 active days of adapter work (E.1 + E.2). Phase 2.5
-follow-up (Fubini-lift cleanup of the polarization-introduced axiom)
-is independent and optional.
+**✅ COMPLETE (2026-05-15 later).** All stages landed on
+`phase-3-smoke-test`:
 
-Pre-conditions all satisfied:
-- Chaos infrastructure end-to-end axiom-free (2026-05-11 #print axioms).
-- Multivariate BE instance proved (markov-semigroups main, `e1e2011`).
-- Lp-carrier Phase 1+2 bundles proved (markov-semigroups
-  `feat/lp-carrier-stdGaussianFin-dirichletmarkov`, `6782dc7`).
-- Phase 3 smoke test compiling (gaussian-hilbert `phase-3-smoke-test`,
-  `0f0c5eb`) — bundle reachable, slots into
-  `gross_lsi_implies_hypercontractive`.
+- Stage A — Mehler operator: ✅ DONE (in OUEigenfunctions.lean)
+- Stage Ag — Agreement theorem: ✅ DONE 2026-05-11
+- N1 — multivariate BE instance: ✅ DONE upstream (markov-semigroups
+  main, `e1e2011`)
+- Lp-carrier Phase 1+2 bundles: ✅ DONE upstream (markov-semigroups
+  `feat/lp-carrier-stdGaussianFin-dirichletmarkov`, `6782dc7`)
+- Phase 3 smoke test: ✅ DONE 2026-05-15 (`0f0c5eb`)
+- E.1 — `h_lsi` adapter: ✅ DONE 2026-05-15 (`fbb6701`)
+- E.2 — concrete `ouSemigroupAct_eLpNorm_hypercontractive` discharge:
+  ✅ DONE 2026-05-15 (`e1bde62`)
+- Axiom retirement: ✅ DONE 2026-05-15 (`029156d`)
+
+`grep ^axiom GaussianHilbert/` returns empty. gaussian-hilbert is
+zero-local-axiom. `#print axioms ouSemigroupAct_eLpNorm_hypercontractive`
+shows the standard trio + `gross_lsi_implies_hypercontractive` + 3
+markov-semigroups GaussianFin BE axioms — all inherited, none local.
+
+Optional cleanup (Phase 2.5 in markov-semigroups): the fresh-Fubini
+discharge of `ouSemigroupFin_l2_sq_hasDerivWithinAt` would eliminate one
+of the 3 inherited GaussianFin axioms (~1.5 active days, dual-vetted
+plan in markov-semigroups EuclideanFin.lean:2637).
 
 ---
 

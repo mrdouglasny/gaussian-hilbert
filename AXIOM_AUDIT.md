@@ -1,6 +1,44 @@
 # Axiom audit — gaussian-hilbert
 
-*Last updated 2026-05-15.*
+*Last updated 2026-05-15 (later — after Stage E.2 + axiom retirement).*
+
+## 2026-05-15 (later) — `ouSemigroupAct_eLpNorm_hypercontractive` discharged; gaussian-hilbert zero-axiom
+
+The placeholder axiom has been promoted to a theorem (commit `e1bde62`)
+and the axiom declaration retired (`029156d`). gaussian-hilbert no
+longer carries any local `axiom` keyword. `grep ^axiom GaussianHilbert/`
+returns empty.
+
+`#print axioms polynomial_chaos_concentration` (and `bonami_nelson_chaos*`
+and the new theorem `ouSemigroupAct_eLpNorm_hypercontractive`) report
+exactly:
+
+```
+[propext, Classical.choice, Quot.sound,
+ gross_lsi_implies_hypercontractive,
+ GaussianFin.ouSemigroupFin_entropy_sq_decay_bound,
+ GaussianFin.ouSemigroupFin_l2_sq_hasDerivWithinAt,
+ GaussianFin.ouSemigroupFin_preserves_IsCore]
+```
+
+— standard trio + Gross 1975 + 3 markov-semigroups GaussianFin BE
+axioms (the multivariate BE instance's transitive closure). All of
+these live in markov-semigroups.
+
+The proof composes `BakryEmerySpace.satisfiesLogSobolev` (already in
+markov-semigroups) → DirichletMarkovSemigroup adapter (E.1, defeq
+through `@[reducible] toDirichletSpace`) →
+`gross_lsi_implies_hypercontractive` → semigroup-action agreement chain
+(`bundle.P t = ouSemigroupFinLp t =ᵐ ouSemigroupFin t = mehlerFun n t
+=ᵐ mehlerOp n t ht = ouSemigroupAct n t`, with the middle `=` being
+definitional `rfl` because `γFin n = stdGaussianFin n` and
+`ouShiftFin = ouAffine` reduce to the same expressions).
+
+This finishes Workstream C / Stage N for the pphi2 T² OS0–OS2 critical
+path. The next concern is markov-semigroups axiom hygiene
+(Phase 2.5 fresh-Fubini cleanup of
+`ouSemigroupFin_l2_sq_hasDerivWithinAt`, ~1.5 days, drops one inherited
+axiom).
 
 ## 2026-05-15 — Stage N nearly closed via Lp-carrier Phase 2 + Phase 3 wire-in
 
