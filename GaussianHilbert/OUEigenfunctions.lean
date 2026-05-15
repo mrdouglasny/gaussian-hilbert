@@ -1541,30 +1541,22 @@ theorem mehlerOp_eq_ouSemigroupAct (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
   rw [hrhs]
   exact DFunLike.congr_fun h_eq f
 
-/-- **Nelson's hypercontractive bound for the OU semigroup.**
+/- **Nelson's hypercontractive bound for the OU semigroup**
+(`ouSemigroupAct_eLpNorm_hypercontractive`).
 
 For any $p \ge 2$ and $t \ge 0$ with $e^{2t} \ge p - 1$, the OU
 semigroup $T_t$ maps $L^2(\gamma_n)$ to $L^p(\gamma_n)$ with operator
-norm $\le 1$:
-$$
-\|T_t f\|_{L^p(\gamma_n)} \;\le\; \|f\|_{L^2(\gamma_n)}.
-$$
+norm $\le 1$.
 
-This is the original "Nelson bound" (Nelson 1973), equivalent to the
-Gaussian log-Sobolev inequality (Gross 1975) plus the Bakry-Émery
-curvature lower bound for OU.
+**Discharged 2026-05-15** as
+`GaussianHilbert.ouSemigroupAct_eLpNorm_hypercontractive` in
+`GaussianHilbert/HypercontractivityFromBE.lean` via the Phase 2
+markov-semigroups Lp-carrier `DirichletMarkovSemigroup` bundle plus
+`gross_lsi_implies_hypercontractive`. Consumers (e.g.
+`PolynomialChaosConcentration.lean`) import the proved theorem from
+that file.
 
 **Reference:** E. Nelson, *The free Markoff field*, J. Funct. Anal.
 12 (1973), §3. Bakry-Gentil-Ledoux Thm 5.2.3. -/
-axiom ouSemigroupAct_eLpNorm_hypercontractive {n : ℕ}
-    (p : ℝ) (hp : 2 ≤ p)
-    (t : ℝ) (_ht : 0 ≤ t)
-    (_h_nelson : p - 1 ≤ Real.exp (2 * t))
-    (f : MeasureTheory.Lp ℝ 2 (stdGaussianFin n)) :
-    MeasureTheory.eLpNorm
-        ((ouSemigroupAct n t f : (Fin n → ℝ) → ℝ))
-        (ENNReal.ofReal p) (stdGaussianFin n) ≤
-      MeasureTheory.eLpNorm
-        ((f : (Fin n → ℝ) → ℝ)) 2 (stdGaussianFin n)
 
 end GaussianHilbert

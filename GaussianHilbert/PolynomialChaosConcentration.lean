@@ -66,6 +66,7 @@ the proof scripts are short once the prerequisites are wired.
 -/
 
 import GaussianHilbert.OUEigenfunctions
+import GaussianHilbert.HypercontractivityFromBE
 import Mathlib.Analysis.Complex.ExponentialBounds
 
 noncomputable section

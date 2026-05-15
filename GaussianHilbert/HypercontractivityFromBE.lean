@@ -303,7 +303,7 @@ the abstract Phase 2 `DirichletMarkovSemigroup` bundle and
 semigroup action with `ouSemigroupAct` via the chain
 `bundle.P t = ouSemigroupFinLp t =ᵐ ouSemigroupFin t = mehlerFun n t
 =ᵐ mehlerOp n t ht = ouSemigroupAct n t`. -/
-theorem ouSemigroupAct_eLpNorm_hypercontractive_proved {n : ℕ}
+theorem ouSemigroupAct_eLpNorm_hypercontractive {n : ℕ}
     (p : ℝ) (hp : 2 ≤ p)
     (t : ℝ) (ht : 0 ≤ t)
     (h_nelson : p - 1 ≤ Real.exp (2 * t))
