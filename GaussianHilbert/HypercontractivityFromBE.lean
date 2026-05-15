@@ -5,6 +5,7 @@ import MarkovSemigroups.Diffusion.CarreDuChamp
 import MarkovSemigroups.Abstract.Hypercontractivity
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanEntropyDecay
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanFin
+import MarkovSemigroups.Instances.WorkInProgress.EuclideanFinLp
 
 /-! # Intended transitive use of markov-semigroups for hypercontractivity
 
@@ -162,23 +163,36 @@ symmetry (transferred from `BE.semigroup_selfAdjoint`), and an
 The bundle further requires `energy_eq_deriv` linking the energy form
 to the generator's quadratic form. -/
 theorem stdGaussianFin_hypercontractive_schema (_n : ℕ) : True := by
-  -- Sketch (Stage N3):
-  --   have h_be := stdGaussianFin.bakryEmerySpace n
-  --   let D : DirichletMarkovSemigroup (Fin n → ℝ) :=
-  --     { μ := h_be.μ, hμ := inferInstance,
-  --       P := h_be.semigroup,
-  --       semigroup := ...,         -- t ≥ 0 guards from BE.semigroup_add
-  --       identity := h_be.semigroup_zero,
-  --       conservation := ...,      -- P_t 1 = 1 for the Mehler integral
-  --       positivity := ...,        -- non-negative integrand stays non-negative
-  --       symmetry := ...,          -- from BE.semigroup_selfAdjoint
-  --       contraction_eLpNorm := ..., -- upgrade BE.semigroup_contraction
-  --       energy := h_be.energy,
-  --       IsCore := h_be.IsCore,
-  --       ...,
-  --       energy_eq_deriv := ... }  -- certified link to the OU generator
-  --   have h_lsi : D.SatisfiesLogSobolev 1 := /- repackaged stdGaussianFin_LSI_schema -/
-  --   exact MarkovSemigroup.gross_lsi_implies_hypercontractive D 1 h_lsi
+  -- Original Stage N3 sketch retained as design intent. The Phase 2 bundle
+  -- below now provides the `DirichletMarkovSemigroup (Fin n → ℝ)` slot directly,
+  -- so the schema collapses to the two-line Phase 2 wire-in next door.
   trivial
+
+/-! ## Phase 3 smoke test (2026-05-15)
+
+Confirms that Phase 2's `GaussianFin.stdGaussianFin_dirichletMarkovSemigroup`
+(landed in markov-semigroups commit 6782dc7 on
+`feat/lp-carrier-stdGaussianFin-dirichletmarkov`) is reachable from
+gaussian-hilbert and slots correctly into
+`gross_lsi_implies_hypercontractive`. Once Stage W (LSI tensorization) or
+Stage N (full BE instance) lands, `h_lsi` becomes a real theorem and these
+examples upgrade to the actual discharge of
+`ouSemigroupAct_eLpNorm_hypercontractive`. -/
+
+/-- The Phase 2 bundle is reachable and well-typed as a
+`DirichletMarkovSemigroup` on `(Fin n → ℝ)`. -/
+noncomputable example (n : ℕ) : DirichletMarkovSemigroup (Fin n → ℝ) :=
+  GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n
+
+/-- The Phase 2 bundle slots into `gross_lsi_implies_hypercontractive`:
+given an LSI hypothesis, the bundle yields hypercontractivity of the
+underlying semigroup. This is the schema that Stage W/N will close. -/
+example (n : ℕ)
+    (h_lsi : DirichletMarkovSemigroup.SatisfiesLogSobolev
+      (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n) 1) :
+    MarkovSemigroup.IsHypercontractive
+      (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup 1 :=
+  gross_lsi_implies_hypercontractive
+    (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n) 1 one_pos h_lsi
 
 end GaussianHilbert

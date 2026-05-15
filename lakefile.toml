@@ -14,7 +14,7 @@ rev = "main"
 [[require]]
 name = "MarkovSemigroups"
 git = "https://github.com/mrdouglasny/markov-semigroups.git"
-rev = "main"
+rev = "feat/lp-carrier-stdGaussianFin-dirichletmarkov"
 
 [[require]]
 name = "mathlib"
