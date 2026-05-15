@@ -195,4 +195,34 @@ example (n : ℕ)
   gross_lsi_implies_hypercontractive
     (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n) 1 one_pos h_lsi
 
+/-! ## Stage E.1 — `h_lsi` adapter (2026-05-15)
+
+Promotes the smoke-test hypothesis above into a real theorem by
+transferring `BakryEmerySpace.satisfiesLogSobolev` for
+`stdGaussianFin.bakryEmerySpace n` (proved upstream, ρ = 1) through
+the Phase 2 `DirichletMarkovSemigroup` bundle. Both sides reduce to
+`DirichletSpace.SatisfiesLogSobolev (ds := dirichletSpaceFin n) 1`
+because the bundle's auto-derived `toDirichletSpace` takes its fields
+from `(dirichletSpaceFin n).field_name`, so the two `ds` instances are
+definitionally equal. -/
+
+/-- The Phase 2 `DirichletMarkovSemigroup` bundle for the multivariate
+standard Gaussian satisfies the log-Sobolev inequality with constant 1
+(`SatisfiesLogSobolev D 1`), inherited from
+`stdGaussianFin.bakryEmerySpace n`. -/
+theorem stdGaussianFin_dirichletMarkovSemigroup_satisfiesLogSobolev (n : ℕ) :
+    DirichletMarkovSemigroup.SatisfiesLogSobolev
+      (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n) 1 :=
+  stdGaussianFin_LSI n
+
+/-- The Phase 2 `DirichletMarkovSemigroup` bundle's underlying
+`MarkovSemigroup` is hypercontractive at ρ = 1. Combines the E.1 LSI
+adapter with `gross_lsi_implies_hypercontractive`. -/
+theorem stdGaussianFin_dirichletMarkovSemigroup_isHypercontractive (n : ℕ) :
+    MarkovSemigroup.IsHypercontractive
+      (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup 1 :=
+  gross_lsi_implies_hypercontractive
+    (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n) 1 one_pos
+    (stdGaussianFin_dirichletMarkovSemigroup_satisfiesLogSobolev n)
+
 end GaussianHilbert
