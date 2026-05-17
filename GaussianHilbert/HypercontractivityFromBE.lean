@@ -11,13 +11,13 @@ import GaussianHilbert.OUEigenfunctions
 /-! # Intended transitive use of markov-semigroups for hypercontractivity
 
 This file documents and exercises the dependency chain that
-`GaussianHilbert.ouSemigroupAct_eLpNorm_hypercontractive` will route
-through after Stage N completes. The goal is to make explicit which
+`GaussianHilbert.ouSemigroupAct_eLpNorm_hypercontractive` now routes
+through. The goal is to make explicit which
 markov-semigroups axioms gaussian-hilbert (and therefore pphi2) will
 transitively depend on, and to ship a working 1D end-to-end example
 of the composition.
 
-## Axiom inventory (1 transitive axiom)
+## Current transitive axiom inventory (4 non-core axioms)
 
 As of 2026-05-13, the 1D Gaussian Bakry-Émery instance
 `Gaussian1D.bakryEmerySpace : BakryEmerySpace ℝ` is **axiom-free**
@@ -29,16 +29,20 @@ As of 2026-05-13, the 1D Gaussian Bakry-Émery instance
 proved theorems in the markov-semigroups A1/A2 work
 (commits `1b3f797`, `6a89298`, `00cd52b`, `ab36ab0`).
 
-Consequently the **only** markov-semigroups axiom that pphi2 will
-inherit transitively through the post-Stage-N gaussian-hilbert chain
-is the (bundled) Gross theorem:
+For the concrete multivariate hypercontractivity discharge below,
+gaussian-hilbert currently inherits four non-core axioms from
+`markov-semigroups`:
 
-| Axiom | File:Line | Signature | Citation |
+| Axiom | File:Line | Role | Citation |
 |---|---|---|---|
-| `MarkovSemigroup.gross_lsi_implies_hypercontractive` | `Abstract/Hypercontractivity.lean:215` | `(D : DirichletMarkovSemigroup X) (ρ : ℝ) (h_lsi : D.SatisfiesLogSobolev ρ) : D.IsHypercontractive ρ` | Gross 1975, Thm 1; BGL Thm 5.2.3 |
+| `gross_lsi_implies_hypercontractive` | `Abstract/Hypercontractivity.lean:269` | bundled Gross theorem from LSI to hypercontractivity | Gross 1975, Thm 1; BGL Thm 5.2.3 |
+| `GaussianFin.ouSemigroupFin_l2_sq_hasDerivWithinAt` | `Instances/WorkInProgress/EuclideanFin.lean:2643` | multivariate de Bruijn-style `L²` derivative identity | BGL Prop. 4.7.1 |
+| `GaussianFin.ouSemigroupFin_preserves_IsCore` | `Instances/WorkInProgress/EuclideanFin.lean:2771` | preservation of the Gaussian test-function core under the semigroup | BGL §2.7.1 + §3 |
+| `GaussianFin.ouSemigroupFin_entropy_sq_decay_bound` | `Instances/WorkInProgress/EuclideanFin.lean:2799` | multivariate entropy decay for `f²` | BGL Thm. 5.5.2 |
 
-This is a single well-cited textbook fact — substantially better than
-the 5-axiom inventory the original Stage N plan assumed.
+These are upstream `markov-semigroups` axioms, not local axioms in
+`gaussian-hilbert`. The 1D route remains axiom-free apart from the
+Mathlib core classical axioms.
 
 The Gross-API bundle refactor (commits `6e4ad85`, `371780b`) replaced
 the previous loose form (`MarkovSemigroup` + `h_compatible : ds.μ = S.μ` +
@@ -83,15 +87,16 @@ junk-value trap on non-`L²` functions.
                        │
                        ▼
        GaussianHilbert.ouSemigroupAct_eLpNorm_hypercontractive
-                  (currently axiom in gaussian-hilbert;
-                   theorem after Stage N3, transitively
-                   depending only on `gross_lsi_implies_hypercontractive`
+                  (proved theorem in gaussian-hilbert;
+                   currently depending on the four upstream
+                   `markov-semigroups` axioms listed above,
                    plus Mathlib core)
 ```
 
 ## What this file ships
 
-A working 1D end-to-end demonstration of the chain. Specifically:
+A working 1D end-to-end demonstration of the chain, together with the
+current multivariate bridge. Specifically:
 
 - `oneDimGaussianLSI` — the 1D Gaussian log-Sobolev inequality with
   constant ρ = 1, obtained by applying `BakryEmerySpace.satisfiesLogSobolev`
@@ -99,11 +104,14 @@ A working 1D end-to-end demonstration of the chain. Specifically:
   `#print axioms` shows only the Mathlib core — confirming the 1D
   chain into LSI is now genuinely axiom-free.
 
-The multivariate analogue (`stdGaussianFin_LSI_schema`) and the
-Gross-HC application (`stdGaussianFin_hypercontractive_schema`) are
-sketched here as a schema with `sorry` placeholders for the work
-Stage N1 + N3 will complete. Once Stage N lands, these schemas turn
-into one-line theorems mirroring `oneDimGaussianLSI`.
+- `stdGaussianFin_LSI` and
+  `stdGaussianFin_dirichletMarkovSemigroup_satisfiesLogSobolev` — the
+  multivariate LSI bridge through the Phase 2 bundle.
+- `stdGaussianFin_dirichletMarkovSemigroup_isHypercontractive` — the
+  abstract bundled hypercontractivity consequence.
+- `ouSemigroupAct_eLpNorm_hypercontractive` — the concrete
+  gaussian-hilbert hypercontractive estimate. This theorem is proved
+  here, but currently inherits the four upstream axioms listed above.
 -/
 
 namespace GaussianHilbert
@@ -146,11 +154,11 @@ theorem stdGaussianFin_LSI (n : ℕ) :
       (stdGaussianFin.bakryEmerySpace n).ρ :=
   BakryEmerySpace.satisfiesLogSobolev (be := stdGaussianFin.bakryEmerySpace n)
 
-/-- **The bundled Gross HC target — schema (Stage N3 fills in).**
+/-- **The bundled Gross HC target — schema (historical design stub).**
 
-Given the multivariate LSI from `stdGaussianFin_LSI_schema`,
-`gross_lsi_implies_hypercontractive` (the only transitive axiom in
-the chain) produces the bundled `IsHypercontractive` predicate on a
+Given the multivariate LSI from `stdGaussianFin_LSI`,
+`gross_lsi_implies_hypercontractive` produces the bundled
+`IsHypercontractive` predicate on a
 `DirichletMarkovSemigroup (Fin n → ℝ)` constructed from the BE
 instance plus four extra Markov-semigroup properties.
 
@@ -175,9 +183,8 @@ Confirms that Phase 2's `GaussianFin.stdGaussianFin_dirichletMarkovSemigroup`
 (landed in markov-semigroups commit 6782dc7 on
 `feat/lp-carrier-stdGaussianFin-dirichletmarkov`) is reachable from
 gaussian-hilbert and slots correctly into
-`gross_lsi_implies_hypercontractive`. Once Stage W (LSI tensorization) or
-Stage N (full BE instance) lands, `h_lsi` becomes a real theorem and these
-examples upgrade to the actual discharge of
+`gross_lsi_implies_hypercontractive`. The following E.1 and E.2 stages
+then turn `h_lsi` into a real theorem and discharge
 `ouSemigroupAct_eLpNorm_hypercontractive`. -/
 
 /-- The Phase 2 bundle is reachable and well-typed as a
@@ -187,7 +194,8 @@ noncomputable example (n : ℕ) : DirichletMarkovSemigroup (Fin n → ℝ) :=
 
 /-- The Phase 2 bundle slots into `gross_lsi_implies_hypercontractive`:
 given an LSI hypothesis, the bundle yields hypercontractivity of the
-underlying semigroup. This is the schema that Stage W/N will close. -/
+underlying semigroup. This is the abstract step that the concrete
+theorems below instantiate. -/
 example (n : ℕ)
     (h_lsi : DirichletMarkovSemigroup.SatisfiesLogSobolev
       (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n) 1) :

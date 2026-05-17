@@ -47,7 +47,7 @@ not need any stochastic-integration machinery.
 Orthogonality, the chaos sum decomposition for `wienerChaosLE`, and the
 full Hilbert-sum decomposition (`wienerChaos_isHilbertSum`) are all
 proved from `hermiteMulti_orthogonality` and `hermiteMulti_dense`. The
-latter rests on the textbook density axiom
+latter rests on the proved density theorem
 `GaussianHilbert.polynomial_dense_L2_of_subGaussian`.
 -/
 

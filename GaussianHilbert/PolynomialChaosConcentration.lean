@@ -55,14 +55,14 @@ This file is the LD endpoint that downstream consumers call.
 
 ## Status
 
-API + axiom skeleton (2026-05-08). The Bonami-Nelson L^p improvement
-on a single chaos follows immediately from the OU eigenfunction
-identity (`ouSemigroup_act_wienerChaos`) plus the abstract
-hypercontractivity inequality already in
-`Abstract/Hypercontractivity.lean`. The concentration tail bound is
-a Markov + optimize derivation from the L^p bound. Both are stated
-as axioms here pending the OU semigroup being concretely available;
-the proof scripts are short once the prerequisites are wired.
+Implemented (2026-05-15). The Bonami-Nelson `L^p` bounds and the
+concentration tail bound are proved in this file. Their analytic input
+is the concrete theorem
+`ouSemigroupAct_eLpNorm_hypercontractive`, together with the chaos
+action theorem `ouSemigroupAct_eq_smul_of_mem_wienerChaos`. As a
+result, this module is proof-complete here but still inherits the
+transitive `markov-semigroups` axioms tracked in
+`HypercontractivityFromBE.lean`.
 -/
 
 import GaussianHilbert.OUEigenfunctions
@@ -114,7 +114,7 @@ infinite-dim OU semigroup. Janson §5.1.
 maps $L^2 \to L^p$ for $e^{2t} = p - 1$ with operator norm $\le 1$
 (`Abstract/Hypercontractivity.lean`). Restricted to $\mathcal H_k$,
 $T_t$ acts as multiplication by $e^{-kt}$
-(`ouSemigroup_act_wienerChaos`), hence
+(`ouSemigroupAct_eq_smul_of_mem_wienerChaos`), hence
 $\|f\|_{L^p} \cdot e^{-kt} \le \|f\|_{L^2}$. Solving for
 $\|f\|_{L^p}$ with $e^{2t} = p - 1$ gives the bound. -/
 theorem bonami_nelson_chaos (n k : ℕ)

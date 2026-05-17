@@ -34,10 +34,10 @@ eigenfunction relation is a polynomial identity.
 
 ## Main theorems
 
-- `ouGenerator_hermiteMulti_1d` — `L₁ H_k = -k · H_k` (1D base case).
-- `ouGenerator_hermiteMulti` — `L H_α = -|α| · H_α` (multi-index).
-- `ouSemigroup_act_wienerChaos` — `T_t f = exp(-k t) · f` for
-  `f ∈ wienerChaos γ k`. This is the semigroup-level reformulation.
+- `ouGenerator1D_hermiteEval` — `L₁ H_k = -k · H_k` (1D base case).
+- `ouGenerator_hermiteMultiEval` — `L H_α = -|α| · H_α` (multi-index).
+- `ouSemigroupAct_eq_smul_of_mem_wienerChaos` — `T_t f = exp(-k t) · f`
+  for `f ∈ wienerChaos γ k`. This is the semigroup-level reformulation.
 
 ## References
 
@@ -48,11 +48,12 @@ eigenfunction relation is a polynomial identity.
 
 ## Status
 
-API + axiom skeleton (2026-05-08). The 1D and multivariate
-eigenfunction identities are stated as axioms with explicit
-proof-strategy docstrings citing the polynomial recurrence; the
-semigroup-level reformulation depends on the
-`Diffusion/OrnsteinUhlenbeck.lean` skeleton being filled in.
+Implemented (2026-05-15). The 1D and multivariate eigenfunction
+identities are proved directly from the Hermite polynomial recurrence.
+The Mehler operator, its `L²` contraction properties, and the
+spectral/Mehler agreement theorem are also in place. Remaining
+axiomatic dependencies enter only through the downstream
+hypercontractivity route in `HypercontractivityFromBE.lean`.
 -/
 
 import GaussianHilbert.WienerChaos
@@ -1551,8 +1552,10 @@ norm $\le 1$.
 **Discharged 2026-05-15** as
 `GaussianHilbert.ouSemigroupAct_eLpNorm_hypercontractive` in
 `GaussianHilbert/HypercontractivityFromBE.lean` via the Phase 2
-markov-semigroups Lp-carrier `DirichletMarkovSemigroup` bundle plus
-`gross_lsi_implies_hypercontractive`. Consumers (e.g.
+markov-semigroups Lp-carrier `DirichletMarkovSemigroup` bundle, the
+bundled Gross theorem `gross_lsi_implies_hypercontractive`, and the
+current upstream `GaussianFin` semigroup axioms tracked in that file.
+Consumers (e.g.
 `PolynomialChaosConcentration.lean`) import the proved theorem from
 that file.
 

@@ -32,11 +32,11 @@ tensor product of the 1D Hermite polynomials already in Mathlib
 
 ## Status
 
-API + axiom skeleton (2026-05-08). Definitions are concrete; the
-orthogonality theorem is axiomatized with a textbook citation and
-proof-strategy docstring (Fubini on the tensor product + 1D
-orthogonality from Mathlib's `Polynomial.hermite_orthogonality`
-chain). Awaiting downstream consumer (`WienerChaos.lean`).
+Implemented (2026-05-15). The multivariate Hermite definitions,
+orthogonality theorem, and density theorem are all proved. The density
+step now uses the proved theorem
+`GaussianHilbert.polynomial_dense_L2_of_subGaussian` from
+`PolynomialDensity.lean`.
 -/
 
 import Mathlib.RingTheory.Polynomial.Hermite.Basic
@@ -423,7 +423,7 @@ under the standard Gaussian), the Hermite family forms a complete orthogonal
 system.
 
 **Proof:** Combine
-- `GaussianHilbert.polynomial_dense_L2_of_subGaussian` (axiom):
+- `GaussianHilbert.polynomial_dense_L2_of_subGaussian` (proved theorem):
   multivariate polynomials are dense in `L²(μ)` for any sub-Gaussian probability
   measure on `Fin n → ℝ`.
 - `GaussianHilbert.isSubGaussianMeasure_pi_gaussianReal` (proved):
