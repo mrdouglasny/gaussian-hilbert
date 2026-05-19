@@ -5,7 +5,7 @@ import MarkovSemigroups.Diffusion.CarreDuChamp
 import MarkovSemigroups.Abstract.Hypercontractivity
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanEntropyDecay
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanFin
-import MarkovSemigroups.Instances.WorkInProgress.EuclideanFinLp
+import MarkovSemigroups.Instances.WorkInProgress.EuclideanFinBE
 import GaussianHilbert.OUEigenfunctions
 
 /-! # Intended transitive use of markov-semigroups for hypercontractivity
