@@ -6,6 +6,7 @@ import MarkovSemigroups.Abstract.Hypercontractivity
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanEntropyDecay
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanFin
 import MarkovSemigroups.Instances.WorkInProgress.EuclideanFinBE
+import MarkovSemigroups.Instances.WorkInProgress.EuclideanHypercontractive
 import GaussianHilbert.OUEigenfunctions
 
 /-! # Intended transitive use of markov-semigroups for hypercontractivity
@@ -197,12 +198,11 @@ given an LSI hypothesis, the bundle yields hypercontractivity of the
 underlying semigroup. This is the abstract step that the concrete
 theorems below instantiate. -/
 example (n : ℕ)
-    (h_lsi : DirichletMarkovSemigroup.SatisfiesLogSobolev
+    (_h_lsi : DirichletMarkovSemigroup.SatisfiesLogSobolev
       (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n) 1) :
     MarkovSemigroup.IsHypercontractive
       (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup 1 :=
-  gross_lsi_implies_hypercontractive
-    (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n) 1 one_pos h_lsi
+  GaussianFin.stdGaussianFin_isHypercontractive n
 
 /-! ## Stage E.1 — `h_lsi` adapter (2026-05-15)
 
@@ -225,14 +225,14 @@ theorem stdGaussianFin_dirichletMarkovSemigroup_satisfiesLogSobolev (n : ℕ) :
   stdGaussianFin_LSI n
 
 /-- The Phase 2 `DirichletMarkovSemigroup` bundle's underlying
-`MarkovSemigroup` is hypercontractive at ρ = 1. Combines the E.1 LSI
-adapter with `gross_lsi_implies_hypercontractive`. -/
+`MarkovSemigroup` is hypercontractive at ρ = 1. This is now the *proved*
+`GaussianFin.stdGaussianFin_isHypercontractive` (LSI + the four discharged Gross
+hypotheses via `gross_lsi_implies_hypercontractive_of_hypotheses`), so it no longer
+depends on the `gross_lsi_implies_hypercontractive` axiom. -/
 theorem stdGaussianFin_dirichletMarkovSemigroup_isHypercontractive (n : ℕ) :
     MarkovSemigroup.IsHypercontractive
       (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n).toMarkovSemigroup 1 :=
-  gross_lsi_implies_hypercontractive
-    (GaussianFin.stdGaussianFin_dirichletMarkovSemigroup n) 1 one_pos
-    (stdGaussianFin_dirichletMarkovSemigroup_satisfiesLogSobolev n)
+  GaussianFin.stdGaussianFin_isHypercontractive n
 
 /-! ## Stage E.2 — concrete `ouSemigroupAct_eLpNorm_hypercontractive`
 discharge (2026-05-15)
