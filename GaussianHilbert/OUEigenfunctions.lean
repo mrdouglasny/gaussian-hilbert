@@ -621,8 +621,9 @@ private lemma ou_kernel_map_real (t : ℝ) (ht : 0 ≤ t) :
     congr 1
     · simp
     · simp only [mul_one]
-      exact NNReal.eq (by
-        simp [va, vb, NNReal.coe_add, NNReal.coe_mk, hab_real])
+      refine NNReal.eq ?_
+      show a ^ 2 + b ^ 2 = 1
+      exact hab_real
   simpa [γ] using hmap.trans hgoal
 
 private lemma stdGaussianFin_prod_map_ouAffine (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
