@@ -1,0 +1,206 @@
+# formalization.yaml — https://github.com/mathlib-initiative/formalization.yaml (v0.3)
+# Describes the `main` branch state (0 sorries, 0 local axioms; see STATUS.md).
+# Relocated from markov-semigroups (Gaussian/*) + gaussian-field (PolynomialDensityGaussian).
+version: "v0.3"
+
+project:
+  name: "gaussian-hilbert"
+  authors: ["Michael R. Douglas"]
+  license: "Apache-2.0"            # no LICENSE file in-repo; inferred from sibling project convention (gaussian-field)
+
+sources:
+  - title: "Gaussian Hilbert Spaces"
+    authors: ["Svante Janson"]
+    id: "ISBN:978-0-521-56128-0"
+    type: "textbook"
+    license: "proprietary"
+    note: "Primary source. Cambridge Tracts in Mathematics 129 (1997). Thm 2.6 (poly density), Thm 5.10 (polynomial-chaos concentration)."
+  - title: "The free Markoff field"
+    authors: ["Edward Nelson"]
+    id: "10.1016/0022-1236(73)90025-6"
+    type: "paper"
+    license: "proprietary"
+    note: "Hypercontractivity for the OU semigroup."
+  - title: "Normal Approximations with Malliavin Calculus"
+    authors: ["Ivan Nourdin", "Giovanni Peccati"]
+    id: "ISBN:978-1-107-01777-1"
+    type: "textbook"
+    license: "proprietary"
+    note: "Cambridge Tracts 192 (2012). Wiener chaos / fourth-moment context (secondary)."
+  - title: "The Malliavin Calculus and Related Topics"
+    authors: ["David Nualart"]
+    id: "ISBN:978-3-540-28328-7"
+    type: "textbook"
+    license: "proprietary"
+    note: "2nd ed., Springer (2006). Wiener chaos, multiple integrals on finite-dim Gaussian (secondary)."
+  - title: "Analysis and Geometry of Markov Diffusion Operators"
+    authors: ["Dominique Bakry", "Ivan Gentil", "Michel Ledoux"]
+    id: "ISBN:978-3-319-00226-2"
+    type: "textbook"
+    license: "proprietary"
+    note: "Grundlehren 348 (2014). OU as Markov diffusion; hypercontractivity / Gross / Bonami-Beckner-Nelson (secondary)."
+  - title: "Logarithmic Sobolev Inequalities"
+    authors: ["Leonard Gross"]
+    id: "10.2307/2373688"
+    type: "paper"
+    license: "proprietary"
+    note: "Amer. J. Math. 97 (1975). LSI <-> hypercontractivity duality, used via the inherited markov-semigroups Gross axiom."
+
+status:
+  scope: >
+    A Lean/Mathlib library for finite-dimensional Gaussian Hilbert space theory
+    over the standard product Gaussian gamma_n on R^n, following Janson's
+    "Gaussian Hilbert Spaces". Core pieces: (1) multivariate (probabilist's)
+    Hermite polynomials and their L^2(gamma_n) orthogonality and density;
+    (2) the Wiener chaos decomposition into orthogonal closed L^2 submodules;
+    (3) the Ornstein-Uhlenbeck generator L = Delta - x.grad, its Hermite
+    eigenfunction theorem, and the spectral OU semigroup acting by e^{-kt} on the
+    k-th chaos; (4) the Bonami-Beckner-Nelson hypercontractive bound on each chaos
+    and Janson Theorem 5.10 polynomial-chaos concentration; (5) an L^2 polynomial
+    density theorem for sub-Gaussian measures on Fin n -> R. Infinite-dimensional
+    Malliavin calculus is deliberately out of scope.
+  sorry_count: 0
+  sorry_in_definitions: 0
+  axioms: []                       # zero LOCAL axioms (BBN placeholder discharged 2026-05-15)
+  # Inherited (transitive, from markov-semigroups) on the concentration results:
+  #   gross_lsi_implies_hypercontractive, and 3 GaussianFin.* Bakry-Emery axioms (BGL Ch. 2)
+  main_results:
+    - declaration: "GaussianHilbert.hermiteMulti_orthogonality"
+      file: "GaussianHilbert/HermitePolynomials.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "L^2(gamma_n) orthogonality of multivariate Hermite polynomials: int H_alpha H_beta dgamma_n = delta_{alpha,beta} prod_i alpha_i!"
+          source: "ISBN:978-0-521-56128-0"
+    - declaration: "GaussianHilbert.hermiteMulti_dense"
+      file: "GaussianHilbert/HermitePolynomials.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "L^2-density of the multivariate Hermite system in L^2(gamma_n)"
+          source: "ISBN:978-0-521-56128-0"
+    - declaration: "GaussianHilbert.wienerChaos_isHilbertSum"
+      file: "GaussianHilbert/WienerChaos.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Wiener chaos decomposition L^2(gamma_n) = orthogonal Hilbert sum of the chaos levels H_k"
+          source: "ISBN:978-0-521-56128-0"
+    - declaration: "GaussianHilbert.ouGenerator_hermiteMultiEval"
+      file: "GaussianHilbert/OUEigenfunctions.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "OU generator eigenfunction theorem: (Delta - x.grad) H_alpha = -|alpha| H_alpha"
+          source: "ISBN:978-3-319-00226-2"
+    - declaration: "GaussianHilbert.ouSemigroupAct_eLpNorm_hypercontractive"
+      file: "GaussianHilbert/HypercontractivityFromBE.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Nelson hypercontractive bound for the OU semigroup, via Gross's LSI <-> hypercontractivity duality and Bakry-Emery"
+          source: "10.1016/0022-1236(73)90025-6"
+    - declaration: "GaussianHilbert.bonami_nelson_chaos"
+      file: "GaussianHilbert/PolynomialChaosConcentration.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Bonami-Beckner-Nelson bound on the k-th chaos: ||f||_{L^p} <= (p-1)^{k/2} ||f||_{L^2}"
+          source: "ISBN:978-3-319-00226-2"
+    - declaration: "GaussianHilbert.polynomial_chaos_concentration"
+      file: "GaussianHilbert/PolynomialChaosConcentration.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "Janson Theorem 5.10 polynomial-chaos concentration: P(|F| > lambda ||F||_{L^2}) <= 2 exp(-c_d lambda^{2/d})"
+          source: "ISBN:978-0-521-56128-0"
+    - declaration: "GaussianHilbert.polynomial_dense_L2_of_subGaussian"
+      file: "GaussianHilbert/PolynomialDensity.lean"
+      sorry_count: 0
+      axioms: []
+      literature_dependencies:
+        - statement: "L^2 density of polynomials for a sub-Gaussian measure on Fin n -> R (Carleman moment-determinacy route)"
+          source: "ISBN:978-0-521-56128-0"
+
+automation:
+  methods:
+    - method: "agent"
+      models: ["claude-opus-4-8", "claude-opus-4-7"]
+      framework: "Claude Code"
+      prompting_notes: "Primary prover: cycle-by-cycle proving with compiler-guided repair. Most commits carry an Opus 4.7 co-author trailer; the latest carries Opus 4.8."
+    - method: "agent"
+      models: ["gpt-5-codex"]
+      framework: "Codex"
+      prompting_notes: "Auxiliary proving / hand-off on the OU-discharge and polynomial-density stages (per commit co-author trailers and docs/*-codex-plan.md)."
+    - method: "other"
+      models: ["gemini"]
+      framework: "Gemini (deep-think / chat)"
+      prompting_notes: "Cross-vetting of the spectral OU and hypercontractivity routes (docs/_drafts/gemini-vet-*.md); not used as a prover and not present in commit trailers; exact version unrecorded."
+  notes: >
+    Models inferred from commit co-author trailers (Claude Opus 4.7/4.8 primary;
+    codex auxiliary) and docs (Gemini vetting only). Codex version recorded as
+    'codex' in trailers; gpt-5-codex assumed per project convention.
+
+fidelity:
+  divergences: >
+    Restricted to the finite-dimensional setting (standard product Gaussian
+    gamma_n on R^n) rather than a general/infinite-dimensional Gaussian Hilbert
+    space; this avoids infinite-dim Malliavin calculus while preserving the
+    algebraic and spectral content. Five of the six library files were relocated
+    from markov-semigroups (MarkovSemigroups/Gaussian/*) and one from
+    gaussian-field. The hypercontractivity bound is obtained through the abstract
+    markov-semigroups Gross/Bakry-Emery framework rather than Nelson's original
+    Mehler-kernel argument.
+
+review:
+  status: "self-assessed"
+  reviewers: []
+  notes: >
+    0 sorries and 0 local axioms on main. The hypercontractivity placeholder
+    axiom was discharged 2026-05-15 and is now a proved theorem. The concentration
+    results inherit 4 upstream axioms from markov-semigroups (1 Gross + 3
+    GaussianFin Bakry-Emery); these are textbook and live in the markov-semigroups
+    discharge backlog. README.md headline ("1 axiom") is stale; STATUS.md is current.
+
+alignment:
+  namespace: "GaussianHilbert"
+  statements:
+    - source: "ISBN:978-0-521-56128-0"
+      lean: "GaussianHilbert.hermiteMulti_orthogonality"
+      module: "GaussianHilbert.HermitePolynomials"
+      status: "proved"
+    - source: "ISBN:978-0-521-56128-0"
+      lean: "GaussianHilbert.hermiteMulti_dense"
+      module: "GaussianHilbert.HermitePolynomials"
+      status: "proved"
+    - source: "ISBN:978-0-521-56128-0"
+      lean: "GaussianHilbert.wienerChaos_isHilbertSum"
+      module: "GaussianHilbert.WienerChaos"
+      status: "proved"
+      note: "full orthogonal Hilbert-sum chaos decomposition."
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "GaussianHilbert.ouGenerator_hermiteMultiEval"
+      module: "GaussianHilbert.OUEigenfunctions"
+      status: "proved"
+      note: "OU generator eigenfunction theorem L H_alpha = -|alpha| H_alpha."
+    - source: "10.1016/0022-1236(73)90025-6"
+      lean: "GaussianHilbert.ouSemigroupAct_eLpNorm_hypercontractive"
+      module: "GaussianHilbert.HypercontractivityFromBE"
+      status: "proved"
+      note: "former placeholder axiom; discharged via Gross LSI -> hypercontractivity + Bakry-Emery (inherits upstream markov-semigroups axioms)."
+    - source: "ISBN:978-3-319-00226-2"
+      lean: "GaussianHilbert.bonami_nelson_chaos"
+      module: "GaussianHilbert.PolynomialChaosConcentration"
+      status: "proved"
+    - source: "ISBN:978-0-521-56128-0"
+      lean: "GaussianHilbert.polynomial_chaos_concentration"
+      module: "GaussianHilbert.PolynomialChaosConcentration"
+      status: "proved"
+      note: "Janson Theorem 5.10."
+    - source: "ISBN:978-0-521-56128-0"
+      lean: "GaussianHilbert.polynomial_dense_L2_of_subGaussian"
+      module: "GaussianHilbert.PolynomialDensity"
+      status: "proved"
+      note: "Janson Thm 2.6; Carleman moment-determinacy route."
+
+acknowledgements: ""
